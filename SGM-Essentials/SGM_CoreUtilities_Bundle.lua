@@ -1,0 +1,34 @@
+-- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
+-- @author Scott Mills
+-- @version 1.1.1
+-- @metapackage
+-- @changelog
+--   1.1.1 (2026-10-08)
+--     + Top Shelf audit: daw-discovery-analyzer 1.0.1 (GetUserInputs menu,
+--       localized functions), SGM_reaper_ultra_hd_smart_tools 1.0.1
+--       (palette fix, mouse-modifier consent/restore, no global exports)
+--   1.1.0 (2026-06-03)
+--     + Reorganised for ReaPack: focused on production-ready utilities only
+--   1.0.0 (2026-05-23)
+--     + Initial release
+-- @provides
+--   [main] SGM_route_mix_bus.lua
+--   [main] SGM_auto_master.lua
+--   [main] SGM_FieldyBagToggle.lua
+--   [main] SGM_reaper_ultra_hd_smart_tools.lua
+--   [main] daw-discovery-analyzer.lua
+--   [nomain] SGM_Utils.lua
+
+return "SGM Studios Bundle: Essentials"
+
+-- @about
+--   ## SGM Studios Essentials
+--   A curated collection of production-ready REAPER utility scripts.
+--
+--   Included:
+--   - SGM_route_mix_bus.lua — Route all tracks through a Mix Bus (dry-run safe)
+--   - SGM_auto_master.lua — One-click mastering chain with REAPER stock plugins
+--   - SGM_FieldyBagToggle.lua — Toggle between Fieldy/Dimebag bass FX chains
+--   - SGM_reaper_ultra_hd_smart_tools.lua — 4K-optimized theme with smart tools
+--   - daw-discovery-analyzer.lua — Profile your REAPER environment
+--   - SGM_Utils.lua — Shared utility library (loaded by other scripts)
