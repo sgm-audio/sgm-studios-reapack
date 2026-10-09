@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="SGM Studios">
+  <category name="SGM-Essentials">
+    <reapack name="SGM_CoreUtilities_Bundle.lua" type="script" desc="SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Studios Essentials\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A curated collection of production-ready REAPER utility scripts.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Included: - SGM_route_mix_bus.lua \u8212- Route all tracks through a Mix Bus (dry-run safe) - SGM_auto_master.lua \u8212- One-click mastering chain with REAPER stock plugins - SGM_FieldyBagToggle.lua \u8212- Toggle between Fieldy/Dimebag bass FX chains - SGM_reaper_ultra_hd_smart_tools.lua \u8212- 4K-optimized theme with smart tools - daw-discovery-analyzer.lua \u8212- Profile your REAPER environment - SGM_Utils.lua \u8212- Shared utility library (loaded by other scripts)\par}
+]]></description>
+      </metadata>
+      <version name="1.1.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.1.1 (2026-10-08)
+  + Top Shelf audit: daw-discovery-analyzer 1.0.1 (GetUserInputs menu,
+    localized functions), SGM_reaper_ultra_hd_smart_tools 1.0.1
+    (palette fix, mouse-modifier consent/restore, no global exports)
+1.1.0 (2026-06-03)
+  + Reorganised for ReaPack: focused on production-ready utilities only
+1.0.0 (2026-05-23)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_Utils.lua</source>
+      </version>
+    </reapack>
+    <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Fieldy-Bag Toggle\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Toggles between two bass guitar FX chains: Fieldy (slap/rock) and Dimebag (metal). Requires the correct plugin ordering on the selected bass track.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b FX slot layout:} - Slots 1-3: Fieldy chain (Korn-style slap/rock bass) - Slots 4-6: Dimebag chain (Pantera-style metal bass)\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How it works:} - Running the script checks the state of slot 1 - If Fieldy is active (slots 1-3 enabled, 4-6 bypassed), switches to Dimebag (slots 4-6 enabled, 1-3 bypassed) - Run again to toggle back to Fieldy - Console shows which chain is now active\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Select a bass track with FX in slots 1-6 2. Run the script 3. Check the console for the active chain name\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - No track selected: shows error message - Track has fewer than 6 FX: toggles what\u8217's available gracefully - Track has no FX: shows message, no crash\par}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.0 (2026-06-02)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+      </version>
+    </reapack>
+    <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Auto Mastering Tool\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Applies a professional mastering chain to the master bus using built-in REAPER plugins (ReaEQ, ReaComp, ReaLimit).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Chain order:} 1. ReaEQ (High-Pass Filter at 30 Hz) \u8212- removes subsonic rumble 2. ReaComp \u8212- bus compression with configurable threshold 3. ReaLimit \u8212- peak ceiling at -1.0 dBTP\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Run the script 2. If the master track has existing FX, a confirmation dialog appears 3. Click \u8220"Yes\u8221" to clear and reapply the mastering chain 4. Chain is applied in order: HPF \u8594 ? Compressor \u8594 ? Limiter\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Configuration (edit at top of script):} - HPF_FREQ = 30: high-pass filter frequency (Hz) - COMP_THRESH = -18: compressor threshold (dB) - COMP_RATIO = 2:1: compressor ratio - LIMIT_CEIL = -1.0: limiter ceiling (dBTP)\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - Existing FX: prompts before clearing - Cancel dialog: no changes made, no undo point created - Multiple runs: stacks FX (intentional for A/B comparison)\par}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.0 (2026-06-02)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_auto_master.lua</source>
+      </version>
+    </reapack>
+    <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-optimized REAPER theme with AI-aware UI elements and smart tool configuration">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Ultra HD Smart Tools\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 4K/UHD-optimized REAPER theme generator with WCAG-compliant contrast optimization and smart toolbar tools.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b What it does:} - Generates a 4K-optimized REAPER theme with high-contrast WCAG-compliant color palette (dark theme with Pro Tools-inspired blue accents) - Includes a defer loop for dynamic toolbar tools: - Toolbar clock display - CPU meter overlay - Color picker for track/item tinting - AI-aware UI elements with distinct colors for AI-suggested state\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Run the script to apply the 4K theme 2. Run again to start the deferred toolbar tool loop 3. The defer loop runs until the script is terminated via Actions\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Limitations:} - Best results on REAPER 7.0+ (native 4K support) - Theme generation modifies the REAPER color scheme \u8212- backup your current theme before applying - Defer loop consumes minimal CPU but should be terminated when not needed - Some UI elements may need manual tweaking depending on your display configuration (DPI scaling, monitor setup)\par}
+]]></description>
+      </metadata>
+      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.1 (2026-10-08)
+  + Top Shelf audit: add missing ThemeMetadata.palette (fixes crash in install_theme)
+  + Top Shelf audit: save/restore mouse modifier; confirm before smart tools start
+  + Top Shelf audit: localize functions, remove _G exports (no global leaks)
+1.0.0 (2026-06-02)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+      </version>
+    </reapack>
+    <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Route Mix Bus\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Creates (or finds) a dedicated Mix Bus track, disables Master/Parent send on every other track, and routes them all through the Mix Bus. The Mix Bus itself feeds the Master \u8212- perfect for bus compression, overall mix glue, or stem-style mixing workflows.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Features:} - DRY_RUN mode: set DRY_RUN = true to preview changes without applying - Folder depth behavior: processes tracks at the specified folder depth - Duplicate-send prevention: skips tracks already routed to Mix Bus - Color-coded Mix Bus track (configurable RGB color)\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Select the tracks to route through the Mix Bus 2. Run the script 3. Check the console for a summary of routing changes\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Configuration (edit at top of script):} - MIX_BUS_NAME = \u8220"Mix Bus\u8221": name of the bus track - MIX_BUS_COLOR = \{ r = 255, g = 180, b = 50 \}: track color - DRY_RUN = false: set to true for preview mode - DEBUG = false: set to true for verbose logging\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - No tracks selected: shows error \u8220"No tracks selected.\u8221" - Mix Bus already exists: reuses existing bus track - Already routed tracks: skips duplicate sends\par}
+]]></description>
+      </metadata>
+      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.0 (2026-06-03)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_route_mix_bus.lua</source>
+      </version>
+    </reapack>
+    <reapack name="daw-discovery-analyzer.lua" type="script" desc="Profile the REAPER environment: plugins, routing graph, track structure, and system specs">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER DAW Discovery and Analyzer\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Profiles the current REAPER installation and open project.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b What it analyzes:} - Operating system and REAPER version - Audio device configuration (driver, sample rate, block size) - Available plugins (scans installed VST/VST3/AU/JSFX) - Track structure (count, routing graph, folder hierarchy) - Project settings (tempo, time signature, length) - System specs relevant to audio performance (CPU, RAM, disk)\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Dependencies:} - Core features work without any external extensions - SWS/S&M Extension enables advanced routing inspection - Script detects SWS availability and adjusts output accordingly\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Output format:} - Clean, formatted console report - Sections: System Info, Audio Config, Plugin Inventory, Track Map, Routing\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Open a REAPER project 2. Run the script 3. Open View \u8594 ? Console to read the report\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - SWS not installed: routing features limited, note printed in report - Empty project: still reports system info and audio config - No plugins found: reports \u8220"No plugins discovered\u8221"\par}
+]]></description>
+      </metadata>
+      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.1 (2026-10-08)
+  + Top Shelf audit: replace gfx.showmenu with GetUserInputs
+  + Top Shelf audit: localize main functions (no global leaks)
+1.0.0 (2026-05-23)
+  + Initial release
+  + System profiling: CPU, RAM, sample rate, buffer size
+  + Plugin discovery and categorization
+  + Signal flow graph generation exported to console]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/daw-discovery-analyzer.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="Rule-of-30">
+    <reapack name="SGM_RuleOf30_Bundle.lua" type="script" desc="SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Heavy Metal Production Bundle\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A complete session building system for professional heavy industrial and metal production in REAPER.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Includes: - rule-of-30-session-builder.lua: builds the full 48+ track session - rule-of-30-plugin-presets.lua: plugin chain configuration library (dependency) - phase-alignment-tool.lua: sample-accurate DI guitar alignment\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Drop Bb tuning. 95-110 BPM. Designed for dense, high-track-count productions with quad-tracked guitars, double bass, and full orchestral augmentation layers.\par}
+]]></description>
+      </metadata>
+      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.1 (2026-10-08)
+  + Top Shelf audit: undo/PUIR on all session-builder actions,
+    GetUserInputs menus, localized helpers (session-builder 1.0.1,
+    phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
+1.0.0 (2026-05-23)
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/phase-alignment-tool.lua</source>
+      </version>
+    </reapack>
+    <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Phase Alignment Tool\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Analyses selected guitar DI tracks, detects transient onsets, and nudges items to achieve sample-accurate phase alignment before amp simulation or cabinet processing is applied.\par}
+]]></description>
+      </metadata>
+      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.1 (2026-10-08)
+  + Top Shelf audit: replace gfx.showmenu with GetUserInputs
+1.0.0 (2026-05-23)
+  + Initial release
+  + Transient onset detection on selected DI tracks
+  + Sample-accurate offset calculation and item nudge
+  + Designed for quad-tracked guitars in heavy metal production]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/phase-alignment-tool.lua</source>
+      </version>
+    </reapack>
+    <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
+      <metadata>
+        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Session Builder\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Builds a professional heavy industrial/metal session template. Drop Bb tuning. Requires rule-of-30-plugin-presets.lua in the same directory.\par}
+]]></description>
+      </metadata>
+      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
+        <changelog><![CDATA[1.0.1 (2026-10-08)
+  + Top Shelf audit: undo + PreventUIRefresh on all six actions
+  + Top Shelf audit: replace gfx.showmenu with GetUserInputs
+1.0.0 (2026-05-23)
+  + Initial release
+  + 48+ track template: quad guitars, double bass, full drum kit, orchestral layers
+  + Drop Bb tuning, 95-110 BPM range
+  + Bus architecture with parallel compression sends]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <metadata>
+    <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel0 \b \fs34 SGM Studios \u8212- REAPER Scripts\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Free REAPER ReaScripts by {\b Scott Mills / SGM Studios}, distributed via {\field{\*\fldinst{HYPERLINK "https://reapack.com"}}{\fldrslt{\ul
+ReaPack
+}}}
+.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Installation\par}
+{\pard \ql \f0 \fs24 \sa180 \li360 \fi-360\ls1\ilvl0\tx360 {\listtext\tab 1.\tab} In REAPER: {\b Extensions} \u8594 ? {\b ReaPack} \u8594 ? {\b Import repositories\u8230 ?}\par}
+{\pard \ql \f0 \fs24 \sa180 \li360 \fi-360\ls1\ilvl0\tx360 {\listtext\tab 2.\tab} Paste this URL:\par}
+{\pard \ql \f0 \fs24 \sa180 \li360 \ls1\ilvl0\fi0 \f1 \fs24 https://raw.githubusercontent.com/sgm-audio/sgm-studios-reapack/main/index.xml\par}
+{\pard \ql \f0 \fs24 \sa180 \li360 \fi-360\ls1\ilvl0\tx360 {\listtext\tab 3.\tab} {\b Extensions} \u8594 ? {\b ReaPack} \u8594 ? {\b Browse packages\u8230 ?} \u8594 ? install {\b SGM Studios Essentials} and/or {\b SGM Rule of 30 Bundle} \u8594 ? click {\b Apply}\sa180\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Bundles\par}
+{
+\trowd \trgaph120
+\clbrdrb\brdrs\cellx2880\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 Bundle\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 Scripts\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 What it does\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 {\b SGM-Essentials}\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 6 + shared library\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 Mix bus routing, one-click mastering, bass FX chain toggle, 4K theme + smart tools, DAW environment profiler\par}
+\cell}
+}
+\intbl\row}
+{
+\trowd \trgaph120
+\cellx2880\cellx5760\cellx8640
+\trkeep\intbl
+{
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 {\b Rule-of-30}\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 3 + preset library\par}
+\cell}
+{{\pard\intbl \ql \f0 \fs24 \sa0 \li0 \fi0 48-track heavy metal session builder (Drop Bb, quad guitars), plugin chain presets, quad-DI phase alignment\par}
+\cell}
+}
+\intbl\row}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Requirements\par}
+{\pard \ql \f0 \fs24 \sa0 \li360 \fi-360\ls2\ilvl0\tx360 {\listtext\tab \bullet \tab} REAPER 7.0+ (Lua 5.4)\par}
+{\pard \ql \f0 \fs24 \sa0 \li360 \fi-360\ls2\ilvl0\tx360 {\listtext\tab \bullet \tab} SWS/S&M Extension \u8212- optional (enables routing inspection in the DAW analyzer)\par}
+{\pard \ql \f0 \fs24 \sa0 \li360 \fi-360\ls2\ilvl0\tx360 {\listtext\tab \bullet \tab} All scripts use REAPER stock FX by default \u8212- no paid plugins required\sa180\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Also from SGM Studios (paid)\par}
+{\pard \ql \f0 \fs24 \sa0 \li360 \fi-360\ls3\ilvl0\tx360 {\listtext\tab \bullet \tab} {\b Suno AI Workflow Suite} ($24) \u8212- six-script pipeline for importing and producing Suno AI tracks in REAPER\par}
+{\pard \ql \f0 \fs24 \sa0 \li360 \fi-360\ls3\ilvl0\tx360 {\listtext\tab \bullet \tab} {\b Hip-Hop/EDM Session Builder} ($12) \u8212- 23-track West Coast hip-hop \u215 ? progressive house session\sa180\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Available on Gumroad.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 License\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 MIT \u8212- see {\field{\*\fldinst{HYPERLINK "LICENSE"}}{\fldrslt{\ul
+LICENSE
+}}}
+. Free for personal and commercial use.\par}
+]]></description>
+  </metadata>
+</index>
