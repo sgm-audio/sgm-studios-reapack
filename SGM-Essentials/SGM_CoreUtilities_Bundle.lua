@@ -8,7 +8,7 @@
 --       localized functions), SGM_reaper_ultra_hd_smart_tools 1.0.1
 --       (palette fix, mouse-modifier consent/restore, no global exports)
 --   1.1.0 (2026-06-03)
---     + Reorganised for ReaPack: focused on production-ready utilities only
+--     + Reorganised for ReaPack: kept to the utilities I use day to day
 --   1.0.0 (2026-05-23)
 --     + Initial release
 -- @provides
@@ -23,7 +23,7 @@ return "SGM Studios Bundle: Essentials"
 
 -- @about
 --   ## SGM Studios Essentials
---   A curated collection of production-ready REAPER utility scripts.
+--   A set of REAPER utility scripts I use in my own sessions.
 --
 --   Included:
 --   - SGM_route_mix_bus.lua — Route all tracks through a Mix Bus (dry-run safe)
