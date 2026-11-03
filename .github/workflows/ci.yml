@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  lua-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.4
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Check Lua syntax (5.4)
+        run: |
+          fail=0
+          for f in $(git ls-files '*.lua'); do
+            if ! luac5.4 -p "$f" 2>&1; then
+              echo "SYNTAX ERROR: $f"
+              fail=1
+            fi
+          done
+          exit $fail
+
+  index-xml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate index.xml
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          t = ET.parse("index.xml")
+          srcs = list(t.iter("source"))
+          print(f"{len(srcs)} source entries")
+          for s in srcs:
+              assert (s.text or "").strip(), f"empty source in {s.attrib}"
+          print("index.xml OK")
+          PY
