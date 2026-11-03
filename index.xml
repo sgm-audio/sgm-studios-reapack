@@ -4,7 +4,7 @@
     <reapack name="SGM_CoreUtilities_Bundle.lua" type="script" desc="SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities">
       <metadata>
         <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Studios Essentials\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A curated collection of production-ready REAPER utility scripts.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A set of REAPER utility scripts I use in my own sessions.\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Included: - SGM_route_mix_bus.lua \u8212- Route all tracks through a Mix Bus (dry-run safe) - SGM_auto_master.lua \u8212- One-click mastering chain with REAPER stock plugins - SGM_FieldyBagToggle.lua \u8212- Toggle between Fieldy/Dimebag bass FX chains - SGM_reaper_ultra_hd_smart_tools.lua \u8212- 4K-optimized theme with smart tools - daw-discovery-analyzer.lua \u8212- Profile your REAPER environment - SGM_Utils.lua \u8212- Shared utility library (loaded by other scripts)\par}
 ]]></description>
       </metadata>
@@ -14,7 +14,7 @@
     localized functions), SGM_reaper_ultra_hd_smart_tools 1.0.1
     (palette fix, mouse-modifier consent/restore, no global exports)
 1.1.0 (2026-06-03)
-  + Reorganised for ReaPack: focused on production-ready utilities only
+  + Reorganised for ReaPack: kept to the utilities I use day to day
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_route_mix_bus.lua</source>
