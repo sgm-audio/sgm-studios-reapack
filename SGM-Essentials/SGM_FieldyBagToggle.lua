@@ -1,7 +1,11 @@
 -- @description Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track
 -- @author Scott Mills
--- @version 1.0.0
+-- @version 1.0.1
 -- @changelog
+--   1.0.1 (2026-11-07)
+--     + Fix: no longer writes bypass state to FX slots that do not exist
+--     + Fix: no undo point is created when nothing was actually toggled
+--     + Fix: single selected-track lookup (main() and the toggle shared it)
 --   1.0.0 (2026-06-02)
 --     + Initial release
 -- @provides [main] SGM_FieldyBagToggle.lua
@@ -28,70 +32,82 @@
 --   3. Check the console for the active chain name
 --
 --   **Edge cases handled:**
---   - No track selected: shows error message
---   - Track has fewer than 6 FX: toggles what's available gracefully
---   - Track has no FX: shows message, no crash
+--   - No track selected: message box + console note, no crash
+--   - Track has no FX: console message "No FX found on selected track.", no crash
+--   - Track has fewer than 6 FX: only the slots that exist are toggled
 
 -- ==========================================
 -- REAPER SCRIPT: Fieldy-Bag Toggle (2026)
 -- ==========================================
 
+local KORN_SLOTS_START, KORN_SLOTS_END = 0, 2      -- Fieldy chain (0-based FX indices)
+local DIMEBAG_SLOTS_START, DIMEBAG_SLOTS_END = 3, 5 -- Dimebag chain
+
 local function msg(m)
     reaper.ShowConsoleMsg(tostring(m) .. "\n")
 end
 
-local function toggle_bass_chains()
-    -- Target the selected track
+local function set_range_enabled(track, first, last, enabled)
+    local count = reaper.TrackFX_GetCount(track)
+    local changed = false
+    for i = first, last do
+        if i < count then
+            if reaper.TrackFX_GetEnabled(track, i) ~= enabled then
+                reaper.TrackFX_SetEnabled(track, i, enabled)
+                changed = true
+            end
+        end
+    end
+    return changed
+end
+
+-- Returns true when at least one FX state actually changed.
+local function toggle_bass_chains(track)
+    -- Slot 1 decides which chain is currently active
+    local is_korn_active = reaper.TrackFX_GetEnabled(track, KORN_SLOTS_START)
+
+    local changed
+    if is_korn_active then
+        msg("ACTIVATE: DIMEBAG SQUEAL MODE")
+        changed = set_range_enabled(track, KORN_SLOTS_START, KORN_SLOTS_END, false)
+        changed = set_range_enabled(track, DIMEBAG_SLOTS_START, DIMEBAG_SLOTS_END, true) or changed
+    else
+        msg("ACTIVATE: KORN SLAP MODE")
+        changed = set_range_enabled(track, KORN_SLOTS_START, KORN_SLOTS_END, true)
+        changed = set_range_enabled(track, DIMEBAG_SLOTS_START, DIMEBAG_SLOTS_END, false) or changed
+    end
+
+    if not changed then
+        msg("FX chain already in the requested state.")
+    end
+    return changed
+end
+
+local function main()
     local track = reaper.GetSelectedTrack(0, 0)
     if not track then
-        msg("ERROR: No track selected. Select your Ibanez SR505E track.")
+        reaper.MB("Select your bass track first.", "Fieldy-Bag Toggle", 0)
+        msg("ERROR: No track selected. Select the bass track that holds both FX chains.")
         return
     end
 
-    -- 2026 Naming Convention: 
-    -- Plugins 1-3 = KORN NODE
-    -- Plugins 4-6 = DIMEBAG NODE
-    
-    -- Check current state of the first plugin in Node A
-    local is_korn_active = reaper.TrackFX_GetEnabled(track, 0)
-
-    if is_korn_active then
-        -- Switch to DIMEBAG
-        msg("ACTIVATE: DIMEBAG SQUEAL MODE")
-        -- Bypass Korn Node (0, 1, 2)
-        for i = 0, 2 do 
-            reaper.TrackFX_SetEnabled(track, i, false)
-        end
-        -- Enable Dimebag Node (3, 4, 5)
-        for i = 3, 5 do 
-            reaper.TrackFX_SetEnabled(track, i, true)
-        end
-    else
-        -- Switch to KORN
-        msg("ACTIVATE: KORN SLAP MODE")
-        -- Enable Korn Node
-        for i = 0, 2 do 
-            reaper.TrackFX_SetEnabled(track, i, true)
-        end
-        -- Bypass Dimebag Node
-        for i = 3, 5 do 
-            reaper.TrackFX_SetEnabled(track, i, false)
-        end
+    if reaper.TrackFX_GetCount(track) == 0 then
+        msg("No FX found on selected track.")
+        return
     end
-end
 
--- Main menu guard
-local function main()
-  local track = reaper.GetSelectedTrack(0, 0)
-  if not track then
-    reaper.MB("Select your bass track first.", "Fieldy-Bag Toggle", 0)
-    return
-  end
-  reaper.PreventUIRefresh(1)
-  reaper.Undo_BeginBlock()
-  toggle_bass_chains()
-  reaper.Undo_EndBlock("Toggle Bass Chain", -1)
-  reaper.PreventUIRefresh(-1)
+    -- Nothing to toggle (single chain present) -> no undo point, no busywork.
+    if reaper.TrackFX_GetCount(track) < DIMEBAG_SLOTS_START + 1 then
+        msg("Only one FX chain present on this track — nothing to toggle.")
+        return
+    end
+
+    reaper.PreventUIRefresh(1)
+    reaper.Undo_BeginBlock()
+    toggle_bass_chains(track)
+    reaper.Undo_EndBlock("Toggle Bass Chain", -1)
+    reaper.PreventUIRefresh(-1)
+    reaper.UpdateArrange()
 end
 
 main()

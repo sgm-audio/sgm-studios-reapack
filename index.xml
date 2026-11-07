@@ -3,13 +3,27 @@
   <category name="SGM-Essentials">
     <reapack name="SGM_CoreUtilities_Bundle.lua" type="script" desc="SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Studios Essentials\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Studios Essentials\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A set of REAPER utility scripts I use in my own sessions.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Included: - SGM_route_mix_bus.lua \u8212- Route all tracks through a Mix Bus (dry-run safe) - SGM_auto_master.lua \u8212- One-click mastering chain with REAPER stock plugins - SGM_FieldyBagToggle.lua \u8212- Toggle between Fieldy/Dimebag bass FX chains - SGM_reaper_ultra_hd_smart_tools.lua \u8212- 4K-optimized theme with smart tools - daw-discovery-analyzer.lua \u8212- Profile your REAPER environment - SGM_Utils.lua \u8212- Shared utility library (loaded by other scripts)\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Each script can be run on its own. Included:\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - SGM_route_mix_bus.lua - Route the selected tracks (or all top-level tracks) through a Mix Bus. DRY_RUN preview mode.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - SGM_auto_master.lua - One-click mastering chain on the master bus using ReaEQ, ReaComp and ReaLimit.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - SGM_FieldyBagToggle.lua - Toggle between the Fieldy (FX slots 1-3) and Dimebag (slots 4-6) bass chains.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - SGM_reaper_ultra_hd_smart_tools.lua - Generate a 4K-friendly theme file and optionally start the smart-tool cursor engine.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - daw-discovery-analyzer.lua - Profile your REAPER environment: system, audio device, plugins, routing.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - SGM_Utils.lua - Shared utility library available to your own scripts. Not an action; none of the bundled scripts load it automatically.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.1.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.1.1 (2026-10-08)
+      <version name="1.1.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.1.2 (2026-11-07)
+  + Bug-fix pass (scripts audited against the ReaScript API):
+    SGM_auto_master 1.0.1, SGM_route_mix_bus 1.0.1, SGM_FieldyBagToggle 1.0.1,
+    daw-discovery-analyzer 1.0.2, SGM_reaper_ultra_hd_smart_tools 1.0.2
+  + Docs: removed the toolbar clock / CPU meter / color picker and the
+    Shift+F12 / Ctrl+Alt+U shortcuts, which were never implemented
+1.1.1 (2026-10-08)
   + Top Shelf audit: daw-discovery-analyzer 1.0.1 (GetUserInputs menu,
     localized functions), SGM_reaper_ultra_hd_smart_tools 1.0.1
     (palette fix, mouse-modifier consent/restore, no global exports)
@@ -23,51 +37,74 @@
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/daw-discovery-analyzer.lua</source>
         <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_Utils.lua</source>
+        <source file="SGM_CoreUtilities_Bundle.lua">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Fieldy-Bag Toggle\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Fieldy-Bag Toggle\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Toggles between two bass guitar FX chains: Fieldy (slap/rock) and Dimebag (metal). Requires the correct plugin ordering on the selected bass track.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b FX slot layout:} - Slots 1-3: Fieldy chain (Korn-style slap/rock bass) - Slots 4-6: Dimebag chain (Pantera-style metal bass)\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How it works:} - Running the script checks the state of slot 1 - If Fieldy is active (slots 1-3 enabled, 4-6 bypassed), switches to Dimebag (slots 4-6 enabled, 1-3 bypassed) - Run again to toggle back to Fieldy - Console shows which chain is now active\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Select a bass track with FX in slots 1-6 2. Run the script 3. Check the console for the active chain name\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - No track selected: shows error message - Track has fewer than 6 FX: toggles what\u8217's available gracefully - Track has no FX: shows message, no crash\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 FX slot layout: slots 1-3 = Fieldy chain (Korn-style slap/rock bass), slots 4-6 = Dimebag chain (Pantera-style metal bass).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How it works: the state of slot 1 decides which chain is active. If slots 1-3 are enabled the script switches to Dimebag (4-6 on, 1-3 bypassed); run it again to switch back.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How to use: 1. Select a bass track with FX in slots 1-6. 2. Run the script. 3. The console shows which chain is now active.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Edge cases handled: no track selected shows a message box; a track with no FX reports "No FX found on selected track."; a track with fewer than 4 FX reports that there is nothing to toggle.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.0 (2026-06-02)
+      <version name="1.0.1" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.1 (2026-11-07)
+  + Fix: no longer writes bypass state to FX slots that do not exist
+  + Fix: no undo point when nothing was actually toggled
+  + Fix: reports "No FX found on selected track." as documented
+1.0.0 (2026-06-02)
   + Initial release]]></changelog>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Auto Mastering Tool\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Applies a professional mastering chain to the master bus using built-in REAPER plugins (ReaEQ, ReaComp, ReaLimit).\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Chain order:} 1. ReaEQ (High-Pass Filter at 30 Hz) \u8212- removes subsonic rumble 2. ReaComp \u8212- bus compression with configurable threshold 3. ReaLimit \u8212- peak ceiling at -1.0 dBTP\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Run the script 2. If the master track has existing FX, a confirmation dialog appears 3. Click \u8220"Yes\u8221" to clear and reapply the mastering chain 4. Chain is applied in order: HPF \u8594 ? Compressor \u8594 ? Limiter\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Configuration (edit at top of script):} - HPF_FREQ = 30: high-pass filter frequency (Hz) - COMP_THRESH = -18: compressor threshold (dB) - COMP_RATIO = 2:1: compressor ratio - LIMIT_CEIL = -1.0: limiter ceiling (dBTP)\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - Existing FX: prompts before clearing - Cancel dialog: no changes made, no undo point created - Multiple runs: stacks FX (intentional for A/B comparison)\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Auto Mastering Tool\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Applies a mastering chain to the master bus using built-in REAPER plugins (ReaEQ, ReaComp, ReaLimit).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Chain order: 1. ReaEQ high-pass at 30 Hz (removes subsonic rumble). 2. ReaComp bus compression. 3. ReaLimit brickwall limiting.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How to use: run the script. If the master track already has FX you are asked whether to replace them. Answer No or Cancel to leave the project untouched (no undo point is created).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Configuration (edit at top of script): HPF_FREQ = 30 (Hz), COMP_THRESH = -18 (dB), COMP_RATIO = 2 (x:1), LIMIT_CEIL = -1.0 (dBTP).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Edge cases handled: cancelling the dialog changes nothing; a missing stock plug-in is reported and skipped instead of aborting the chain.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.0 (2026-06-02)
+      <version name="1.0.1" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.1 (2026-11-07)
+  + Fix: stock limiter is "ReaLimit" (was "ReaLimiter", so no limiter was inserted)
+  + Fix: ReaEQ high-pass now configured with TrackFX_SetEQParam instead of
+    writing raw values into the wrong parameter indices
+  + Fix: ReaComp / ReaLimit parameters are found by name, not hard-coded index
+  + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants the docs always promised
+1.0.0 (2026-06-02)
   + Initial release]]></changelog>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_auto_master.lua</source>
       </version>
     </reapack>
-    <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-optimized REAPER theme with AI-aware UI elements and smart tool configuration">
+    <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-friendly REAPER theme generator with WCAG contrast checking and an optional smart-tool cursor engine">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Ultra HD Smart Tools\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 4K/UHD-optimized REAPER theme generator with WCAG-compliant contrast optimization and smart toolbar tools.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b What it does:} - Generates a 4K-optimized REAPER theme with high-contrast WCAG-compliant color palette (dark theme with Pro Tools-inspired blue accents) - Includes a defer loop for dynamic toolbar tools: - Toolbar clock display - CPU meter overlay - Color picker for track/item tinting - AI-aware UI elements with distinct colors for AI-suggested state\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Run the script to apply the 4K theme 2. Run again to start the deferred toolbar tool loop 3. The defer loop runs until the script is terminated via Actions\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Limitations:} - Best results on REAPER 7.0+ (native 4K support) - Theme generation modifies the REAPER color scheme \u8212- backup your current theme before applying - Defer loop consumes minimal CPU but should be terminated when not needed - Some UI elements may need manual tweaking depending on your display configuration (DPI scaling, monitor setup)\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 REAPER Ultra HD Smart Tools\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Generates a 4K/UHD-friendly theme file with a high-contrast, WCAG-checked color palette (dark theme with Pro Tools-inspired blue accents).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 What it does: writes SGM_UltraHD_v<version>.ReaperTheme into your ColorThemes folder, checks the text/background contrast ratio and brightens the primary text colour when it is below the WCAG AAA target (7:1). Optionally starts a context-aware cursor engine modelled on the Pro Tools smart tool.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How to use: 1. Run the script; it writes the theme file and reports the path. 2. Load it via Options > Themes > Theme (a script cannot switch themes). 3. Answer Yes if you want the smart-tool cursor engine, which requires the SWS extension.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Limitations: the smart-tool engine keeps a defer loop running until the script is terminated from the Actions window. HEAP: the cursor engine only reports the resolved tool in the console; it does not change your mouse modifiers. Some UI elements may need manual tweaking depending on DPI scaling.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.1 (2026-10-08)
+      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.2 (2026-11-07)
+  + Fix: smart tools passed numeric ids to SetMouseModifier(), which only accepts
+    mouse-modifier / action ID strings; it could corrupt the user's mouse modifiers
+  + Fix: removed toolbar clock / CPU meter / color picker and Shift+F12 /
+    Ctrl+Alt+U from the docs - they were never implemented
+  + Fix: a failed theme write is now reported instead of printed as success
+1.0.1 (2026-10-08)
   + Top Shelf audit: add missing ThemeMetadata.palette (fixes crash in install_theme)
   + Top Shelf audit: save/restore mouse modifier; confirm before smart tools start
   + Top Shelf audit: localize functions, remove _G exports (no global leaks)
@@ -78,16 +115,23 @@
     </reapack>
     <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Route Mix Bus\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Creates (or finds) a dedicated Mix Bus track, disables Master/Parent send on every other track, and routes them all through the Mix Bus. The Mix Bus itself feeds the Master \u8212- perfect for bus compression, overall mix glue, or stem-style mixing workflows.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Features:} - DRY_RUN mode: set DRY_RUN = true to preview changes without applying - Folder depth behavior: processes tracks at the specified folder depth - Duplicate-send prevention: skips tracks already routed to Mix Bus - Color-coded Mix Bus track (configurable RGB color)\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b How to use:} 1. Select the tracks to route through the Mix Bus 2. Run the script 3. Check the console for a summary of routing changes\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Configuration (edit at top of script):} - MIX_BUS_NAME = \u8220"Mix Bus\u8221": name of the bus track - MIX_BUS_COLOR = \{ r = 255, g = 180, b = 50 \}: track color - DRY_RUN = false: set to true for preview mode - DEBUG = false: set to true for verbose logging\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - No tracks selected: shows error \u8220"No tracks selected.\u8221" - Mix Bus already exists: reuses existing bus track - Already routed tracks: skips duplicate sends\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Route Mix Bus\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Creates (or finds) a dedicated Mix Bus track, disables the master/parent send on the routed tracks and routes them all through the Mix Bus. The Mix Bus itself feeds the Master - useful for bus compression, overall mix glue or stem-style mixing.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Features: DRY_RUN mode previews the changes without applying them. With tracks selected only those are routed; with nothing selected every top-level track is routed. Folder parents are left alone because their children already feed them. Tracks that already have a send to the Mix Bus are skipped.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How to use: 1. Select the tracks to route (or select nothing for "all"). 2. Run the script. 3. Check the console for a routing summary.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Configuration (edit at top of script): MIX_BUS_NAME = "Mix Bus", MIX_BUS_COLOR = \{ r = 255, g = 180, b = 50 \}, DRY_RUN = false, DEBUG = false.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.0" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.0 (2026-06-03)
+      <version name="1.0.1" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.1 (2026-11-07)
+  + Fix: track selection is honoured (previously every top-level track was routed)
+  + Fix: nested tracks inside folders are no longer skipped
+  + Fix: a track named "Mix Bus" is not mistaken for the bus when an existing bus is reused
+  + Fix: no dangling undo point or UI refresh when there is nothing to do
+  + Add: console message when nothing is selected
+1.0.0 (2026-06-03)
   + Initial release]]></changelog>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/SGM-Essentials/SGM_route_mix_bus.lua</source>
       </version>
@@ -103,8 +147,16 @@
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - SWS not installed: routing features limited, note printed in report - Empty project: still reports system info and audio config - No plugins found: reports \u8220"No plugins discovered\u8221"\par}
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.1 (2026-10-08)
+      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.2 (2026-11-07)
+  + Fix: the report used the non-existent reaper.GetCPULoading() and crashed;
+    now uses reaper.GetCPUUsage() with a safe fallback
+  + Fix: audio bit depth queried "BITDEPTH"; the API key is "BPS"
+  + Fix: without SWS, routing edges all pointed at "master"; now uses the
+    built-in P_DESTTRACK API for the real destinations
+  + Fix: SWS detection now checks the routing function actually used
+  + Fix: the config monitor now starts from a captured baseline
+1.0.1 (2026-10-08)
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
   + Top Shelf audit: localize main functions (no global leaks)
 1.0.0 (2026-05-23)
@@ -119,14 +171,24 @@
   <category name="Rule-of-30">
     <reapack name="SGM_RuleOf30_Bundle.lua" type="script" desc="SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Heavy Metal Production Bundle\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A complete session building system for professional heavy industrial and metal production in REAPER.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Includes: - rule-of-30-session-builder.lua: builds the full 48+ track session - rule-of-30-plugin-presets.lua: plugin chain configuration library (dependency) - phase-alignment-tool.lua: sample-accurate DI guitar alignment\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Drop Bb tuning. 95-110 BPM. Designed for dense, high-track-count productions with quad-tracked guitars, double bass, and full orchestral augmentation layers.\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Heavy Metal Production Bundle\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 A session building system for heavy industrial and metal production in REAPER.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Includes:\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - rule-of-30-session-builder.lua: builds the 48+ track session skeleton (7 sections, folder buses, sidechain routing helper).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - rule-of-30-plugin-presets.lua: plugin chain reference library for Waves / iZotope / FabFilter / Neural DSP / Soundtoys. Shipped for reading and copying; the session builder does not load it at runtime.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 - phase-alignment-tool.lua: transient-based DI guitar alignment with fine nudge controls.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Drop Bb tuning. 95-110 BPM. Designed for dense, high-track-count productions with quad-tracked guitars, split bass and augmentation layers.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.1 (2026-10-08)
+      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.2 (2026-11-07)
+  + Bug-fix pass: session builder no longer crashes when building without a
+    plugin inventory, sidechain sends are guarded and deduplicated, tempo marker
+    handling fixed, phase tool no longer leaves the UI frozen on early exit
+  + Docs: the preset file is a reference library, not a runtime dependency
+1.0.1 (2026-10-08)
   + Top Shelf audit: undo/PUIR on all session-builder actions,
     GetUserInputs menus, localized helpers (session-builder 1.0.1,
     phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
@@ -135,16 +197,27 @@
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-session-builder.lua</source>
         <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-plugin-presets.lua</source>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/phase-alignment-tool.lua</source>
+        <source file="SGM_RuleOf30_Bundle.lua">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Phase Alignment Tool\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Analyses selected guitar DI tracks, detects transient onsets, and nudges items to achieve sample-accurate phase alignment before amp simulation or cabinet processing is applied.\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Phase Alignment Tool\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Analyses the selected guitar DI tracks, detects the first transient in each and nudges the items so they line up with the earliest one - before amp simulation or cabinet processing.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Menu: 1 Auto-Align selected tracks, 2 Analyse phase correlation (2 tracks), 3/4 nudge selected items +/-1 ms, 5/6 nudge +/-0.1 ms, 7 show settings.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Settings (edit at top of script): transient_threshold = 0.3, analysis_window = 0.1 s, alignment_precision = 0.0001 s (0.1 ms).\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Edge cases handled: fewer than 2 tracks selected, tracks without items, and tracks with no transient above the threshold all exit without touching the project or leaving the UI frozen.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.1 (2026-10-08)
+      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.2 (2026-11-07)
+  + Fix: early exits left UIRefresh disabled and an undo block open
+  + Fix: transient detection read a multi-channel buffer as if it were mono
+  + Fix: hard-coded 48 kHz in the reports (now uses the project sample rate)
+  + Fix: reported peak stopped accumulating once a transient was found
+1.0.1 (2026-10-08)
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
   + Initial release
@@ -156,12 +229,28 @@
     </reapack>
     <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
       <metadata>
-        <description><![CDATA[{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Session Builder\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Builds a professional heavy industrial/metal session template. Drop Bb tuning. Requires rule-of-30-plugin-presets.lua in the same directory.\par}
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Rule of 30 Session Builder\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Builds a heavy industrial/metal session skeleton: 12-track drum section, 3-band bass split, quad-tracked guitars, vocal layers, glitch/atmosphere and send FX buses. Drop Bb, 100 BPM, project timebase in beats.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Optional plugin inventory: if plugin_inventory.json sits next to the script (or in the REAPER resource folder) its by_category lists are used to choose plug-ins. Expected shape: \{"by_category": \{"EQ": ["ReaEQ"], "Dynamics": ["ReaComp"]\}\}.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Compact Mode (menu option 0, default ON): tracks whose category has no matching plug-in are skipped. Turn it off to build the full skeleton with stock FX.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Menu: 0 toggle Compact Mode, 1 build session, 2 drum chains, 3 bass chains, 4 guitar chains, 5 vocal chains, 6 Kick/Bass sidechain routing, 7 close.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 The chain presets in rule-of-30-plugin-presets.lua are a reference (Waves / iZotope / FabFilter / Neural DSP / Soundtoys) - the builder does not load that file.\par}
+}
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-10-09T05:25:12Z">
-        <changelog><![CDATA[1.0.1 (2026-10-08)
+      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.0.2 (2026-11-07)
+  + Fix (fatal): the plugin-aware builder called addFX() before it was declared,
+    so building with Compact Mode off raised "attempt to call a nil value"
+  + Fix (fatal): CreateTrackSend() returning -1 made the send setters error
+  + Fix: the master track keeps its master/parent send
+  + Fix: plugin_inventory.json is looked for next to the script (was hard-coded
+    to the REAPER resource root)
+  + Fix: sidechain sends reuse an existing Kick Out -> Bass send
+  + Fix: an existing tempo marker is updated instead of adding a new one
+  + Fix: menu option 7 (Close) no longer falls through silently
+1.0.1 (2026-10-08)
   + Top Shelf audit: undo + PreventUIRefresh on all six actions
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
@@ -170,7 +259,7 @@
   + Drop Bb tuning, 95-110 BPM range
   + Bus architecture with parallel compression sends]]></changelog>
         <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source file="rule-of-30-plugin-presets.lua">https://github.com/sgm-audio/sgm-studios-reapack/raw/main/Rule-of-30/rule-of-30-plugin-presets.lua</source>
       </version>
     </reapack>
   </category>

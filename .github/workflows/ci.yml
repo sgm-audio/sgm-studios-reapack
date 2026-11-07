@@ -16,12 +16,12 @@ jobs:
       - name: Check Lua syntax (5.4)
         run: |
           fail=0
-          for f in $(git ls-files '*.lua'); do
+          while IFS= read -r f; do
             if ! luac5.4 -p "$f" 2>&1; then
               echo "SYNTAX ERROR: $f"
               fail=1
             fi
-          done
+          done < <(git ls-files '*.lua')
           exit $fail
 
   index-xml:
@@ -31,11 +31,62 @@ jobs:
       - name: Validate index.xml
         run: |
           python3 - <<'PY'
+          import os, sys, urllib.parse
           import xml.etree.ElementTree as ET
-          t = ET.parse("index.xml")
-          srcs = list(t.iter("source"))
-          print(f"{len(srcs)} source entries")
+
+          tree = ET.parse("index.xml")
+          root = tree.getroot()
+          problems = []
+
+          srcs = list(root.iter("source"))
+          print(f"{len(srcs)} source entries in {len(list(root.iter('reapack')))} packages")
+
           for s in srcs:
-              assert (s.text or "").strip(), f"empty source in {s.attrib}"
+              url = (s.text or "").strip()
+              if not url:
+                  problems.append(f"empty source in {s.attrib}")
+                  continue
+
+              # Every source must point at a file that exists in the repository,
+              # otherwise ReaPack installs a package with missing files.
+              if "/raw/main/" in url:
+                  rel = urllib.parse.unquote(url.split("/raw/main/", 1)[1])
+                  if not os.path.isfile(rel):
+                      problems.append(f"missing file for source: {rel}")
+
+          # Package versions in the index must match the @version header.
+          for pkg in root.iter("reapack"):
+              version = pkg.find("version")
+              if version is None:
+                  problems.append(f"{pkg.get('name')}: no <version>")
+                  continue
+              # Compare against the file that defines the package itself: prefer a
+              # source whose file name matches the package name, else the single
+              # source (metapackages list several unrelated child scripts).
+              sources = version.findall("source")
+              match = [x for x in sources
+                       if os.path.basename(urllib.parse.unquote(x.text.strip())) == pkg.get("name")]
+              if match:
+                  rel = urllib.parse.unquote(match[0].text.strip().split("/raw/main/", 1)[-1])
+              elif len(sources) == 1:
+                  rel = urllib.parse.unquote(sources[0].text.strip().split("/raw/main/", 1)[-1])
+              else:
+                  continue
+              if not os.path.isfile(rel):
+                  continue
+              with open(rel, encoding="utf-8") as fh:
+                  header = [ln for ln in fh if ln.startswith("-- @version ")][:1]
+              if not header:
+                  problems.append(f"{rel}: no @version header")
+              elif header[0].split(None, 2)[2].strip() != version.get("name"):
+                  problems.append(
+                      f"{pkg.get('name')}: index has {version.get('name')}, "
+                      f"header has {header[0].split(None, 2)[2].strip()}"
+                  )
+
+          for p in problems:
+              print("ERROR:", p)
+          if problems:
+              sys.exit(1)
           print("index.xml OK")
           PY

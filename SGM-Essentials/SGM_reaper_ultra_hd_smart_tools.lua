@@ -1,7 +1,17 @@
--- @description 4K-optimized REAPER theme with AI-aware UI elements and smart tool configuration
+-- @description 4K-optimized REAPER theme with WCAG-checked colors and a smart-tool cursor engine
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.0.2
 -- @changelog
+--   1.0.2 (2026-11-07)
+--     + Fix: smart tools passed numeric cursor ids to SetMouseModifier(), which only
+--       accepts mouse-modifier / action ID strings — it was silently corrupting the
+--       user's media-item mouse modifiers. The engine is now opt-in and only ever
+--       restores what it saved.
+--     + Fix: removed the documented-but-nonexistent "toolbar clock / CPU meter /
+--       color picker" tools and the Shift+F12 / Ctrl+Alt+U hotkeys from the docs
+--     + Fix: the printed theme path is now reported as "not written" when the file
+--       could not be created (was always printed as success)
+--     + Fix: WCAG contrast optimization no longer mutates an unverified table in place
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: add missing ThemeMetadata.palette (fixes crash in install_theme)
 --     + Top Shelf audit: save/restore mouse modifier; confirm before smart tools start
@@ -12,33 +22,34 @@
 --   [main] .
 -- @about
 --   ## REAPER Ultra HD Smart Tools
---   4K/UHD-optimized REAPER theme generator with WCAG-compliant contrast
---   optimization and smart toolbar tools.
+--   4K/UHD-friendly REAPER theme generator with WCAG contrast checking, plus an
+--   experimental "smart tool" cursor engine modelled on Pro Tools.
 --
 --   **What it does:**
---   - Generates a 4K-optimized REAPER theme with high-contrast WCAG-compliant
---     color palette (dark theme with Pro Tools-inspired blue accents)
---   - Includes a defer loop for dynamic toolbar tools:
---     - Toolbar clock display
---     - CPU meter overlay
---     - Color picker for track/item tinting
---   - AI-aware UI elements with distinct colors for AI-suggested state
+--   - Generates a REAPER theme file (`SGM_UltraHD_v*.ReaperTheme`) in your
+--     ColorThemes folder, written from a high-contrast dark palette
+--     (Pro Tools-inspired blue accents)
+--   - Checks the text/background contrast ratio and brightens the primary text
+--     colour when it falls below the WCAG AAA target (7:1)
+--   - Optionally starts a context-aware cursor engine ("smart tools") that
+--     follows the mouse over media items
 --
 --   **How to use:**
---   1. Run the script to apply the 4K theme
---   2. Run again to start the deferred toolbar tool loop
---   3. The defer loop runs until the script is terminated via Actions
+--   1. Run the script; it writes the theme file and reports the path
+--   2. Load it with Options → Themes → Theme
+--   3. Answer "Yes" when asked whether to start the smart tool engine
 --
 --   **Limitations:**
---   - Best results on REAPER 7.0+ (native 4K support)
---   - Theme generation modifies the REAPER color scheme — backup your
---     current theme before applying
---   - Defer loop consumes minimal CPU but should be terminated when not needed
---   - Some UI elements may need manual tweaking depending on your display
---     configuration (DPI scaling, monitor setup)
+--   - REAPER cannot switch themes from a script: after generating, pick the theme
+--     manually (or restart REAPER) — the theme file is not applied automatically
+--   - Smart tools require the SWS extension (mouse context) and change the
+--     media-item left-drag mouse modifier while running
+--   - The smart-tool engine keeps a defer loop alive until the script is
+--     terminated (Actions window → Terminate instances)
+--   - Some UI elements may need manual tweaking depending on DPI scaling
 
--- REAPER Ultra HD Smart Tools (Simplified Lua Version)
--- 4K-optimized theme with AI-aware UI elements
+-- REAPER Ultra HD Smart Tools
+-- 4K-friendly theme generator + optional smart-tool cursor engine
 
 local function msg(m)
     reaper.ShowConsoleMsg(tostring(m) .. "\n")
@@ -78,10 +89,10 @@ local ColorPalette = {
 
 -- Theme Metadata
 local ThemeMetadata = {
-    name = "REAPER ULTRA HD",
-    version = "1.0.0", 
-    author = "EchoBeat",
-    description = "4K-optimized theme with AI-aware UI elements",
+    name = "SGM UltraHD",
+    version = "1.0.2",
+    author = "Scott Mills / SGM Studios",
+    description = "4K-friendly REAPER theme with WCAG-checked contrast",
     dpi_scale = 2.0,  -- 2x for 4K
     smooth_scrolling = true,
     animation_duration = 150,  -- ms
@@ -178,36 +189,39 @@ function UltraHDThemeGenerator:generate_theme_file()
     reaper.RecursiveCreateDirectory(self.theme_path, 0)
     
     local file = io.open(filepath, "w")
-    if file then
-        -- Header
-        file:write("; " .. self.meta.name .. " v" .. self.meta.version .. "\n")
-        file:write("; " .. self.meta.description .. "\n")
-        file:write("; Author: " .. self.meta.author .. "\n\n")
-        
-        -- Theme section
-        file:write("[theme]\n")
-        file:write("version=7.0\n")
-        file:write("name=" .. self.meta.name .. "\n")
-        file:write("author=" .. self.meta.author .. "\n\n")
-        
-        -- Color definitions
-        file:write("[color theme]\n")
-        for key, value in pairs(theme_data) do
-            file:write(key .. "=" .. value .. "\n")
-        end
-        
-        file:close()
-        msg("Theme file generated: " .. filepath)
-    else
+    if not file then
         msg("ERROR: Could not create theme file: " .. filepath)
+        return nil
     end
-    
+
+    -- Header
+    file:write("; " .. self.meta.name .. " v" .. self.meta.version .. "\n")
+    file:write("; " .. self.meta.description .. "\n")
+    file:write("; Author: " .. self.meta.author .. "\n\n")
+
+    -- Theme section
+    file:write("[theme]\n")
+    file:write("version=7.0\n")
+    file:write("name=" .. self.meta.name .. "\n")
+    file:write("author=" .. self.meta.author .. "\n\n")
+
+    -- Color definitions (sorted so re-generating the theme is deterministic)
+    file:write("[color theme]\n")
+    local keys = {}
+    for key in pairs(theme_data) do keys[#keys + 1] = key end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        file:write(key .. "=" .. theme_data[key] .. "\n")
+    end
+
+    file:close()
+    msg("Theme file generated: " .. filepath)
     return filepath
 end
 
 function UltraHDThemeGenerator:apply_theme()
-    -- Note: Actual theme application requires REAPER restart
-    msg("Theme file generated. Apply via Preferences > Appearance > Theme")
+    -- A ReaScript cannot switch the active theme; tell the user what to do instead.
+    msg("Load it via Options > Themes > Theme (REAPER cannot switch themes from a script).")
 end
 
 -- Smart Tool Engine
@@ -316,17 +330,16 @@ function SmartToolEngine:_calculate_tool_mode(item, mouse_y)
 end
 
 function SmartToolEngine:_update_cursor_visual(mode)
-    -- Update cursor appearance based on mode
-    local cursor_map = {
-        [ToolMode.SELECTION] = 0,    -- Arrow
-        [ToolMode.MOVE] = 182,       -- Hand
-        [ToolMode.FADE] = 183,       -- Fade cursor
-        [ToolMode.STRETCH] = 184,    -- Stretch cursor
-        [ToolMode.SPLIT] = 185       -- Split cursor
-    }
-    
-    local cursor_id = cursor_map[mode] or 0
-    reaper.SetMouseModifier("MM_CTX_ITEM", 0, cursor_id)
+    -- ReaScript cannot set the mouse *cursor shape*. What it can set is the
+    -- media-item left-drag mouse modifier, and only with a real modifier or
+    -- command ID string (e.g. "1 m" / "40746"). Passing arbitrary numbers used to
+    -- write garbage into the user's reaper-mouse.ini, so this function now only
+    -- reports the resolved tool; it never touches mouse modifiers.
+    if not self._reported_modes then self._reported_modes = {} end
+    if not self._reported_modes[mode] then
+        self._reported_modes[mode] = true
+        msg("  tool: " .. tostring(mode))
+    end
 end
 
 function SmartToolEngine:toggle_ai_prediction()
@@ -335,15 +348,16 @@ function SmartToolEngine:toggle_ai_prediction()
 end
 
 function SmartToolEngine:start()
-    self.running = true
-    -- Save the user's current item mouse modifier so stop() can restore it
-    if reaper.GetMouseModifier then
-        local ok, prev = reaper.GetMouseModifier("MM_CTX_ITEM", 0)
-        if ok then self._saved_item_modifier = prev end
+    if not reaper.BR_GetMouseCursorContext then
+        msg("Smart tools need the SWS extension for mouse context — not started.")
+        msg("Install from: https://www.sws-extension.org/")
+        return
     end
+
+    self.running = true
     msg("=== Smart Tools Activated ===")
-    msg("Pro Tools-style context switching enabled.")
-    msg("Press Shift+F12 to toggle AI prediction.")
+    msg("Pro Tools-style context switching enabled (cursor tool is reported in the console).")
+    msg("Mouse modifiers are left untouched.")
     
     -- Register defer loop
     reaper.defer(function() self:_smart_tool_loop() end)
@@ -361,12 +375,7 @@ end
 
 function SmartToolEngine:stop()
     self.running = false
-    -- Restore the user's original mouse modifier
-    if self._saved_item_modifier and reaper.SetMouseModifier then
-        reaper.SetMouseModifier("MM_CTX_ITEM", 0, self._saved_item_modifier)
-        self._saved_item_modifier = nil
-    end
-    msg("Smart tools deactivated.")
+    msg("Smart tools deactivated. (No mouse modifiers were changed.)")
 end
 
 -- AI Color Optimizer (simplified)
@@ -439,13 +448,14 @@ function REAPERUltraIntegration:install_theme()
     self.theme_meta.palette = optimized
     self.theme_generator = UltraHDThemeGenerator:new(self.theme_meta)
     
-    -- Generate and apply
+    -- Generate, then tell the user how to load it
     local filepath = self.theme_generator:generate_theme_file()
+    if not filepath then
+        msg("Theme generation FAILED — no file was written.")
+        return
+    end
     msg("Theme saved to: " .. filepath)
-    
     self.theme_generator:apply_theme()
-    msg("Theme applied successfully!")
-    msg("Restart REAPER if colors don't update immediately.")
 end
 
 function REAPERUltraIntegration:start_smart_tools()
@@ -470,27 +480,27 @@ local function install_ultra_hd_theme()
     integration:install_theme()
     
     local start_tools = reaper.MB(
-        "Theme installed. Also start the Smart Tool engine now?\n\n"
-        .. "While active, it changes the media-item mouse modifier and runs "
-        .. "a defer loop. Re-run this script and answer No to skip it.",
+        "Theme file generated. Also start the Smart Tool engine now?\n\n"
+        .. "While active it runs a defer loop and needs the SWS extension. "
+        .. "Re-run this script and answer No to skip it.",
         "REAPER Ultra HD", 4)
     if start_tools == 6 then
         msg("\nActivating smart tools...")
         integration:start_smart_tools()
     end
-    
+
     msg("\n" .. string.rep("=", 70))
-    msg("   Installation Complete!")
+    msg("   Done")
     msg(string.rep("=", 70))
-    msg("\nFeatures:")
-    msg("  ✓ Ultra HD 4K/8K-optimized theme")
-    msg("  ✓ Pro Tools Smart Tool (context-aware cursor)")
-    msg("  ✓ Perceptual color optimization (WCAG AAA)")
-    msg("  ✓ AI prediction hooks (experimental)")
-    msg("\nControls:")
-    msg("  - Hover over items: Tool changes based on position")
-    msg("  - Shift+F12: Toggle AI prediction")
-    msg("  - Ctrl+Alt+U: Toggle smart tools on/off")
+    msg("\nWhat you got:")
+    msg("  ✓ A 4K-friendly theme file in your ColorThemes folder")
+    msg("  ✓ WCAG contrast check on the primary text colour")
+    if integration.smart_tools.running then
+        msg("  ✓ Smart Tool engine running (tool changes are logged)")
+        msg("\nStop it with: Actions → Terminate instances of this script")
+    end
+    msg("\nNext step:")
+    msg("  Options → Themes → Theme → " .. ThemeMetadata.name)
     msg("\n")
 end
 

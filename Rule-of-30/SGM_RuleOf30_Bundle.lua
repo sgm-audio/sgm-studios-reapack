@@ -1,8 +1,14 @@
 -- @description SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.0.2
 -- @metapackage
 -- @changelog
+--   1.0.2 (2026-11-07)
+--     + Bug-fix pass: session builder no longer crashes when building without a
+--       plugin inventory, sidechain sends are guarded/deduplicated, tempo marker
+--       handling fixed, phase tool no longer leaves the UI frozen on early exit
+--     + Docs: clarified that the presets file is a reference library, not a
+--       runtime dependency
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: undo/PUIR on all session-builder actions,
 --       GetUserInputs menus, localized helpers (session-builder 1.0.1,
@@ -13,6 +19,7 @@
 --   [main] rule-of-30-session-builder.lua
 --   [nomain] rule-of-30-plugin-presets.lua
 --   [main] phase-alignment-tool.lua
+--   [nomain] SGM_RuleOf30_Bundle.lua
 
 return "SGM Studios Bundle: Rule of 30 Heavy Metal Production"
 
@@ -23,7 +30,8 @@ return "SGM Studios Bundle: Rule of 30 Heavy Metal Production"
 --
 --   Includes:
 --   - rule-of-30-session-builder.lua: builds the full 48+ track session
---   - rule-of-30-plugin-presets.lua: plugin chain configuration library (dependency)
+--   - rule-of-30-plugin-presets.lua: plugin chain reference library (shipped for
+--     reading/copying; the session builder does not load it at runtime)
 --   - phase-alignment-tool.lua: sample-accurate DI guitar alignment
 --
 --   Drop Bb tuning. 95-110 BPM. Designed for dense, high-track-count productions
