@@ -1,3 +1,4 @@
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- Regression tests for the SGM Studios scripts.
 --
 -- Runs entirely without REAPER: each test loads a script with `reaper` bound to

@@ -100,10 +100,15 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
       explicit refusals for the cases it cannot judge. 18 tests cover known offsets,
       inversion, noise rejection, stereo takes, rate mismatch and settings storage.
       Still worth one real-session check against a hand-measured offset.
-- [ ] `SGM_reaper_ultra_hd_smart_tools` is two half-features in one file: a theme
-      writer whose `[theme]`/`[color theme]` keys have never been checked against
-      REAPER's real `.ReaperTheme` schema, and a "smart tool" engine that cannot
-      change the cursor. Split them, or retire the smart-tool half.
+- [x] `SGM_reaper_ultra_hd_smart_tools` — **investigated and rewritten (2.0.0).**
+      The "4K theme generator" claim was false: a `.ReaperTheme` is colours and
+      fonts only, artwork lives in the `.ReaperThemeZip` image stack, and DPI
+      scaling is REAPER's (read-only via `ThemeLayout_GetLayout`). The writer now
+      inherits the loaded theme and replaces colours in the format REAPER parses
+      (integers, `[color theme]`, keys verified against a published theme), and
+      refuses a zipped source. Full evidence in `AUDIT.md` §10; 25 tests in
+      `tests/run_theme_tests.lua`. The smart-tool half remains a mode reporter:
+      ReaScript cannot set the cursor, so it logs and changes nothing.
 
 ---
 

@@ -17,8 +17,20 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.2.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.2.0 (2026-11-07)
+      <version name="1.3.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.3.0 (2026-11-07)
+  + SGM_reaper_ultra_hd_smart_tools 2.0.0: the "4K theme generator" claim is
+    gone because it could not be true. A .ReaperTheme holds colours and fonts;
+    artwork lives in the .ReaperThemeZip image stack, which no ReaScript can
+    author, and DPI scaling is REAPER's, not a file's. The generator now
+    inherits your loaded theme and replaces colours in the format REAPER
+    actually parses (32-bit integers, not hex), with every key verified
+    against a published theme. It refuses to edit a zipped theme instead of
+    writing something that loads and looks broken. Contrast is measured and
+    reported rather than "optimised" by a branch that could never run.
+  + Licence: every script now carries an explicit @license MIT line. The
+    repository was already MIT; the individual files did not say so.
+1.2.0 (2026-11-07)
   + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
     the same way, plus Utils.fx_normalize() which converts a value in a
     plug-in's own units (-18 dB, 10 ms) into the 0..1 value TrackFX_SetParam
@@ -49,13 +61,13 @@
   + Reorganised for ReaPack: kept to the utilities I use day to day
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_route_mix_bus.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_auto_master.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/daw-discovery-analyzer.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_Utils.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_Utils.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
@@ -78,7 +90,7 @@
   + Fix: single selected-track lookup (main() and the toggle shared it)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
@@ -114,7 +126,7 @@
   + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants that the docs always promised
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_auto_master.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-friendly REAPER theme generator with WCAG contrast checking and an optional smart-tool cursor engine">
@@ -129,8 +141,46 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.3" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.3 (2026-11-07)
+      <version name="2.0.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[2.0.0 (2026-11-07)
+  + Fix (honesty): this was described as a "4K theme generator". It cannot
+    be one, and the claims are now gone rather than reworded. A REAPER
+    theme's appearance lives in the PNG stack inside a .ReaperThemeZip;
+    .ReaperTheme holds colours and fonts and nothing else. There is no
+    resolution to generate: REAPER draws at whatever scale the OS says, and
+    the only DPI-related API exposes the *loaded* theme's scaling, it does
+    not set one. The theme this writes uses REAPER's default images, which
+    is exactly what "loads but looks like the default layout" means.
+  + Fix (fatal): the file format was wrong. Colours were written as 6-digit
+    hex like "12243a" and under a "[theme]" section that real theme files do
+    not have. REAPER stores [color theme] values as 32-bit signed integers
+    (col_tl_bg=2302755, col_main_bg=-2143207103), and an unparseable value
+    is silently ignored, so the generated file loaded and changed nothing.
+  + Fix: 12 of the 30 colour keys did not exist (col_tcp_bg, col_mcp_bg,
+    col_item_bg, col_selitem_bg, col_item_fg, editcursor_color, ...). They
+    are renamed to the real keys (col_tcp_text, col_mixerbg, col_mi_bg,
+    mixercol, col_cursor, ...), verified against a published theme and
+    listed in tests/fixtures/theme_keys.txt.
+  + Fix: the generated file had no [REAPER] section, which carries the
+    fonts and ui_img that make a theme a theme. It now copies those from the
+    theme currently loaded, read through GetSetThemeColorVals, so the result
+    is a complete, loadable theme rather than a wall of colour keys.
+  + Fix: "WCAG-checked colours". The contrast maths was right but the branch
+    could never run (the shipped palette is 17.03:1, the threshold was 7),
+    and if it had run it would have made text *darker* (17.03 -> 6.84) - the
+    opposite of its purpose. It now reports measured ratios for several
+    pairs and refuses to alter colours to hit a number.
+  + Fix: the theme is now registered with REAPER via
+    OpenColorThemeFile(), which is the documented way to make a .ReaperTheme
+    visible in Options > Themes. The script still cannot *switch* themes.
+  + Fix: the smart-tool engine's stretch branch tested
+    GetToggleCommandState(1009) as "Alt key". That is not a modifier query;
+    there is no modifier-state API in ReaScript at all. Removed.
+  + Fix: the smart-tool engine no longer claims to change the cursor. It
+    reports the mode it would use, in the console, and changes nothing.
+  + Add: the real DPI scaling REAPER is running at is reported
+    (ThemeLayout_GetLayout "global", -3), instead of a hard-coded guess.
+1.0.3 (2026-11-07)
   + Add: the smart-tool engine reports its on/off state to the Action List
     (SetToggleCommandState) and refreshes the toolbar, so a toolbar button
     reflects whether the defer loop is actually running
@@ -138,21 +188,21 @@
     loop and says so instead of silently freezing
 1.0.2 (2026-11-07)
   + Fix: smart tools passed numeric cursor ids to SetMouseModifier(), which only
-    accepts mouse-modifier / action ID strings — it was silently corrupting the
+    accepts mouse-modifier / action ID strings - it was silently corrupting the
     user's media-item mouse modifiers. The engine is now opt-in and only ever
     restores what it saved.
   + Fix: removed the documented-but-nonexistent "toolbar clock / CPU meter /
     color picker" tools and the Shift+F12 / Ctrl+Alt+U hotkeys from the docs
   + Fix: the printed theme path is now reported as "not written" when the file
     could not be created (was always printed as success)
-  + Fix: WCAG contrast optimization no longer mutates an unverified table in place
+  + Fix: WCAG contrast optimization no longer mutates an unverified table
 1.0.1 (2026-10-08)
   + Top Shelf audit: add missing ThemeMetadata.palette (fixes crash in install_theme)
   + Top Shelf audit: save/restore mouse modifier; confirm before smart tools start
   + Top Shelf audit: localize functions, remove _G exports (no global leaks)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
@@ -183,7 +233,7 @@
   + Add: console message when no tracks are selected
 1.0.0 (2026-06-03)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_route_mix_bus.lua</source>
       </version>
     </reapack>
     <reapack name="daw-discovery-analyzer.lua" type="script" desc="Profile the REAPER environment: plugins, routing graph, track structure, and system specs">
@@ -229,7 +279,7 @@
   + System profiling: CPU, RAM, sample rate, buffer size
   + Plugin discovery and categorization
   + Signal flow graph generation exported to console]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/daw-discovery-analyzer.lua</source>
       </version>
     </reapack>
   </category>
@@ -278,10 +328,10 @@
     phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-plugin-presets.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/phase-alignment-tool.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/phase-alignment-tool.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
@@ -328,7 +378,7 @@
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/phase-alignment-tool.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/phase-alignment-tool.lua</source>
       </version>
     </reapack>
     <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
@@ -385,8 +435,8 @@
   + 48+ track template: quad guitars, double bass, full drum kit, orchestral layers
   + Drop Bb tuning, 95-110 BPM range
   + Bus architecture with parallel compression sends]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-plugin-presets.lua</source>
       </version>
     </reapack>
   </category>

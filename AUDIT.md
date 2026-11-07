@@ -20,7 +20,7 @@ Version bumps: Essentials bundle **1.1.3**, Rule-of-30 bundle **1.0.3**.
 > been made once (`GetCPULoading` → `GetCPUUsage`). Everything in this report is now
 > checked against the authoritative function list, and the check is automated:
 > `tools/check_api.py` runs in CI and fails on any call that is not in the REAPER
-> 7.83 SDK header. The unit tests in `tests/` (66 cases) run every main code path
+> 7.83 SDK header. The unit tests in `tests/` (91 cases) run every main code path
 > against a mock API.
 
 ---
@@ -157,7 +157,7 @@ the repository instead of living in the audit:
 | API-name check | `tools/check_api.py` + `tools/api_allowlist.json` | Any `reaper.*` call not in the REAPER 7.83 SDK header (878 functions) or the SWS allowlist. This is the check that would have caught items 5 and 12–14 before release. |
 | Use-before-`local` check | same | `attempt to call a nil value (global 'x')` — the item-1 crash class. |
 | `PreventUIRefresh` balance | same (per function, following helper calls) | Frozen arrange view after an early return — the item-8 class. |
-| Runtime regression suite | `tests/run_tests.lua`, `run_phase_tests.lua`, `run_builder_tests.lua` + `tests/reaper_mock.lua` (66 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
+| Runtime regression suite | `tests/run_tests.lua`, `run_phase_tests.lua`, `run_builder_tests.lua`, `run_theme_tests.lua` + `tests/reaper_mock.lua` (91 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
 | CI | `.github/workflows/ci.yml` | `lua5.4 -p`, the API check, the test suite, and the stricter `index.xml` validation. |
 
 Both `tools/check_api.py` and the test suite fail loudly on the pre-fix tree: run
@@ -248,3 +248,120 @@ existence of a number it was given, so the fix is not another number — it is
 resolving the action by name at run time (`kbd_enumerateActions` +
 `kbd_getCommandName`, both confirmed present in the header) and reporting when it
 cannot be found.
+
+## 10. The "4K theme generator": what it actually does
+
+The claim under review was that `SGM_reaper_ultra_hd_smart_tools.lua` "generates
+4K themes". It cannot, and it never could. This section is the evidence, because
+the honest answer ("it writes a colour scheme") and the claimed one ("it makes a
+4K theme") differ in ways that matter to anyone who installs it.
+
+### What a REAPER theme is
+
+A theme is one of:
+
+| Form | Contents | Can a ReaScript write it? |
+|------|----------|---------------------------|
+| `.ReaperTheme` | Plain text: `[color theme]` (colours) + `[REAPER]` (fonts, `ui_img`) | **Yes** — this is what the script edits |
+| `.ReaperThemeZip` | The above, plus the entire PNG image stack (`tcp_*`, `mcp_*`, faders, knobs, per-DPI artwork) | **No** — it is binary artwork, authored in an image editor |
+
+Evidence: a published theme (`gapalil001/FlatMadness`,
+`Sources/Flat Madness Dark.ReaperTheme/Flat_madness_Dark_edition_EDIT.ReaperTheme`)
+is 384 lines / 359 keys in `[color theme]` plus 21 `[REAPER]` entries. REAPER's
+own theme adjuster (`Cockos/Default_7.0_theme_adjuster.lua`, shipped with REAPER)
+does exactly this: read the file, change colour integers, write it back, call
+`OpenColorThemeFile`. `amagalma_Adjust theme colors.lua` (ReaTeam/ReaScripts)
+does the same and further demonstrates that a `.ReaperThemeZip` must be unzipped
+before the colours inside are even reachable — the artwork is not scriptable.
+
+### Resolution
+
+There is no resolution in a theme file. REAPER draws at whatever scale the OS and
+its own DPI setting request, and the API exposes that only as a *read*:
+
+- `ThemeLayout_GetLayout(section, -3, buf, sz)` returns the current DPI scale
+  (`256` = 1:1, `512` = 2x). There is no setter for it.
+- `GetIconThemePointerForDPI(name, dpisc)` reads a per-scale icon from a loaded
+  theme; it does not create one.
+- The old script's `dpi_scale = 2.0` was never written to the file. Grep of the
+  writer showed it referenced zero metadata fields.
+- What actually changes at 4K is the **image stack**: a theme author supplies
+  higher-resolution PNGs. Nothing a script can do.
+
+### Colour mapping
+
+The old writer emitted colours as 6-digit hex strings (`"12243a"`) under a
+`[theme]` section that real theme files do not contain. REAPER parses
+`[color theme]` values with `atoi()` into 32-bit integers:
+
+```
+col_cursor=895743           0x000DAAFF
+col_tl_bg=2302755           0x00232323
+col_main_bg=-2143207103     0x80414141   (high bit = alpha)
+```
+
+A hex string parses as its leading digits — `"12243a"` becomes `12243`, a
+near-black nobody chose — and unknown sections and keys are **silently ignored**.
+So the generated theme loaded, changed nothing visible, and reported success.
+That is the worst failure mode a theme generator can have, because there is no
+error to notice.
+
+Twelve of the thirty keys the old script wrote did not exist at all:
+`col_tcp_bg`, `col_mcp_bg`, `col_mcp_text`, `col_mcp_textsel`, `col_item_bg`,
+`col_item_fg`, `col_selitem_bg`, `col_selitem_fg`, `col_item_tag`,
+`col_tcp_text_shadow`, `col_transport_bg`, `editcursor_color`. The real names are
+`col_mixerbg`, `col_main_text`, `col_mi_bg`, `col_mi_bg2`, `col_cursor`, etc.
+
+### Design assets
+
+None were created, by any version. There is no image writer, no `ui_img`
+generation, and no font creation. The old file referenced no images at all — and
+a `.ReaperTheme` that names a `ui_img` the user does not have is precisely the
+"loads and looks broken" case. The 2.0.0 rewrite inherits the `[REAPER]` section
+(including `ui_img` and the font blobs) from the theme that is loaded, so the
+output is a complete theme rather than a fragment.
+
+### The contrast claim
+
+The WCAG maths was correct; the claim around it was not.
+
+- The shipped palette's primary text on its background measures **17.03:1**.
+  The "optimise for AAA (7:1)" branch is guarded by `if contrast < 7.0`, so it
+  could never execute. The feature was dead code with a marketing line attached.
+- Had it executed, it would have **reduced** contrast: `sqrt(7/17.03) = 0.641`
+  darkens text from 241,245,249 to 154,157,159, taking the ratio from 17.03:1 to
+  **6.84:1** — further from the 7:1 it was aiming for, because scaling RGB is not
+  how you raise a luminance ratio.
+
+2.0.0 measures and prints five real ratios and changes nothing. A theme that
+silently recolours your UI to reach an arbitrary number is a worse promise than
+one that tells you the number.
+
+### What 2.0.0 does instead
+
+1. Reads the loaded theme via `GetLastColorThemeFile()`; refuses if it is a
+   `.ReaperThemeZip` (it cannot read the artwork).
+2. Parses it, replaces 33 colour keys (each verified against the published key
+   list, which is now a test fixture), keeps the other ~326.
+3. Writes integers, in `[color theme]`, with the `[REAPER]` section preserved.
+4. Calls `OpenColorThemeFile()` to register it, and says plainly that switching
+   theme is still a menu action.
+5. Reports the DPI scale REAPER is actually drawing at.
+
+`tests/run_theme_tests.lua` (25 cases) checks the packing against known values
+from the real file, that every emitted key exists, that no colour is hex, that
+the `[REAPER]` section survives, that the source's unknown-to-us keys are kept,
+and that a zip is refused. It also asserts the false claims stay gone.
+
+### The smart-tool half
+
+Separate from the theme, the same file claimed a Pro Tools-style "smart tool".
+It cannot exist as described: ReaScript has **no API to set the mouse cursor**.
+
+- `GetToggleCommandState(1009)` was labelled "Alt key". It is not a modifier
+  query, and there is no modifier-state function in the API at all.
+- Version 1.0.2 already found that `SetMouseModifier` takes modifier-context and
+  action-ID *strings*, and that passing numbers quietly corrupted the user's
+  mouse-modifier preferences.
+- What remains in 2.0.0 is a mode reporter: it logs which mode it would pick and
+  changes neither the cursor nor any preference.

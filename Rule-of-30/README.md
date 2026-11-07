@@ -12,8 +12,8 @@ quad-tracked guitars, split bass, and augmentation layers.
 | Script | Type | What It Does |
 |--------|------|-------------|
 | **rule-of-30-session-builder.lua** | [main] | Builds the session skeleton: 12-track drum section, 3-band bass split, quad guitars, vocal layers, glitch/atmosphere and send-FX buses, project tempo/timebase. Optionally plugin-aware (reads `plugin_inventory.json`) and can skip tracks whose plugin category is missing (Compact Mode). |
-| **rule-of-30-plugin-presets.lua** | [nomain] | Plugin chain **reference library** — Waves, iZotope, FabFilter, Neural DSP and Soundtoys chains mapped per instrument. It is shipped so you can read/copy the chains; the session builder does **not** load it at runtime. |
-| **phase-alignment-tool.lua** | [main] | Auto-aligns quad-tracked DI guitars by transient analysis before amp processing, plus phase-correlation checks and fine ±1 ms / ±0.1 ms nudge controls. |
+| **rule-of-30-plugin-presets.lua** | [nomain] | The chain table the builder applies. Stock-FX presets (ReaEQ / ReaComp / ReaGate / ReaVerbate / ReaDelay) keyed by the track names the builder creates, written in the units each plug-in displays (`-18 dB`, `10 ms`) and converted at apply time. Loaded by the builder at runtime; it is a library, not an action. |
+| **phase-alignment-tool.lua** | [main] | Aligns selected DI tracks to the first selected track by cross-correlation, sample-accurately. Measures everything before moving anything, reports offset / correlation / confidence per track, flags inverted polarity, and refuses items it cannot compare (MIDI takes, playrate ≠ 1, silence, rate mismatch, items too short). |
 | **SGM_RuleOf30_Bundle.lua** | [nomain] / metapackage | ReaPack metapackage — installing this pulls in all scripts above. |
 
 ---
@@ -75,7 +75,12 @@ Key configuration constants are at the top of each script:
 
 ## License
 
-MIT — free for personal and commercial use. See [../LICENSE](../LICENSE).
+MIT — free for personal and commercial use. See [../LICENSE](../LICENSE). Every
+script in this bundle carries an `@license MIT` line in its header.
+
+Redistributing these needs only that the copyright notice and `LICENSE` travel
+with them. The full terms, including what the licence does not cover, are in the
+[root README](../README.md#license).
 
 ---
 

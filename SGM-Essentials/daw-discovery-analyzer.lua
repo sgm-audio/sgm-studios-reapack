@@ -1,5 +1,6 @@
 -- @description Profile the REAPER environment: plugins, routing graph, track structure, and system specs
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 1.0.4
 -- @changelog
 --   1.0.4 (2026-11-07)

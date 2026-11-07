@@ -1,5 +1,6 @@
 -- @description SGM Studios shared utility library
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 1.1.0
 -- @noindex
 -- @changelog

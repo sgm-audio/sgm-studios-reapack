@@ -1,3 +1,4 @@
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- Minimal in-memory stand-in for REAPER's ReaScript API.
 --
 -- Purpose: let the scripts' main code paths run in CI so that crashes,
@@ -57,6 +58,18 @@ local PARAM_RANGES = {
   },
 }
 
+-- Create a directory tree, so scripts that write files can be tested for real.
+local function mkdir_p(path)
+  local parts, built = {}, ""
+  for piece in tostring(path):gmatch("[^/\\]+") do parts[#parts + 1] = piece end
+  if tostring(path):sub(1, 1) == "/" then built = "/" end
+  for i, piece in ipairs(parts) do
+    built = built .. piece .. (i < #parts and "/" or "")
+    os.execute('mkdir -p "' .. built .. '" 2>/dev/null')
+  end
+  return 1
+end
+
 function mock.new()
   local r = {
     -- introspection / test hooks
@@ -86,14 +99,14 @@ function mock.new()
   -- console / app -------------------------------------------------------
   function r.ShowConsoleMsg(s) r._messages[#r._messages + 1] = tostring(s) end
   function r.ClearConsole() r._messages = {} end
-  function r.GetOS() return "Win64" end
-  function r.GetResourcePath() return "/resource" end
+  function r.GetOS() return r._os or "Win64" end
+  function r.GetResourcePath() return r._resource_path or "/resource" end
   function r.GetExePath() return "/resource/reaper.exe" end
   function r.GetAppVersion() return "7.83/x64" end
   function r.time_precise() return 1.0 end
   function r.GetPlayPosition() return 0.0 end
   function r.UpdateArrange() end
-  function r.RecursiveCreateDirectory() return 1 end
+  function r.RecursiveCreateDirectory(path) return mkdir_p(path) end
   function r.defer() end
   function r.Main_OnCommand(cmd) r._commands_run[#r._commands_run + 1] = cmd end
 

@@ -1,5 +1,6 @@
 -- @description Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 2.0.0
 -- @changelog
 --   2.0.0 (2026-11-07)

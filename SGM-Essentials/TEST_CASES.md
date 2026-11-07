@@ -127,11 +127,30 @@
 ## SGM_reaper_ultra_hd_smart_tools
 
 ### TC-ST-01: Theme generation
-- **Prerequisites**: REAPER 7.0+.
+- **Prerequisites**: REAPER 7.0+. A **plain `.ReaperTheme`** loaded (not a `.ReaperThemeZip`).
 - **Steps**:
-  1. Run SGM_reaper_ultra_hd_smart_tools
-  2. Answer **No** to the smart-tool prompt
-- **Expected Result**: `SGM_UltraHD_v1.0.2.ReaperTheme` is written to `<resource path>/ColorThemes`; the console prints the full path. Options → Themes → Theme now lists "SGM UltraHD" and selecting it changes the colours. No error.
+  1. Note the current theme and a few of its colours
+  2. Run SGM_reaper_ultra_hd_smart_tools
+  3. Answer **No** to the smart-tool prompt
+  4. Choose the new theme via Options → Themes → Theme
+- **Expected Result**:
+  - Console prints the DPI scale REAPER is drawing at, the theme it inherited
+    from, `SGM_ThemeColours.ReaperTheme` in `<resource path>/ColorThemes`, the
+    number of keys replaced, and five measured contrast ratios.
+  - The file contains `[color theme]` (integer values, not hex) **and** a
+    `[REAPER]` section copied from the source theme.
+  - Selecting the theme **changes the colours** on screen. If nothing changes,
+    the file was not parsed — that is the failure this test exists for.
+  - Keys the source theme did not have are listed with a `!` prefix; there
+    should be none for a standard theme.
+- **Pass**: [ ] / [ ]
+
+### TC-ST-01b: Theme generation with a zipped theme loaded
+- **Prerequisites**: A `.ReaperThemeZip` is the current theme.
+- **Steps**: Run the script.
+- **Expected Result**: It refuses, names the zip, and writes nothing. It must
+  **not** write a partial theme: a theme file that references a `ui_img` from a
+  zip it cannot see loads and looks broken.
 - **Pass**: [ ] / [ ]
 
 ### TC-ST-02: Smart-tool engine (SWS installed)
@@ -139,7 +158,7 @@
 - **Steps**:
   1. Run the script and answer **Yes** to "Also start the Smart Tool engine now?"
   2. Hover over media items, then stop the script (Actions → Terminate instances)
-- **Expected Result**: Console prints one line per resolved tool. **Nothing in your mouse-modifier preferences changes** (this is by design — the old build wrote invalid IDs there). No Lua error.
+- **Expected Result**: Console prints "mode: …" lines. **Nothing in your mouse-modifier preferences changes**, and **the mouse cursor does not change** — ReaScript has no API to set the cursor, so the engine only reports. No Lua error.
 - **Pass**: [ ] / [ ]
 
 ### TC-ST-03: Smart-tool engine (SWS not installed)

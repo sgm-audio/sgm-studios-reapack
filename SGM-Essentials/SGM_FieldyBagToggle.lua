@@ -1,5 +1,6 @@
 -- @description Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 1.0.1
 -- @changelog
 --   1.0.1 (2026-11-07)

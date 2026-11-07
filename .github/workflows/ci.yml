@@ -46,6 +46,8 @@ jobs:
         run: lua5.4 tests/run_phase_tests.lua
       - name: Run the session-builder / preset suite
         run: lua5.4 tests/run_builder_tests.lua
+      - name: Run the theme-generator suite
+        run: lua5.4 tests/run_theme_tests.lua
 
   index-xml:
     runs-on: ubuntu-latest
