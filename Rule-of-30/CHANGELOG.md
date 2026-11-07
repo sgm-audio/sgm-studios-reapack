@@ -1,5 +1,33 @@
 # Rule of 30 — Changelog
 
+## 1.1.0 (2026-11-07) — the actionable system
+
+Documentation release. No script behaviour changed, so no script versions moved
+and `index.xml` is unchanged.
+
+- **New: `MIXING-GUIDE.md`** — the twelve-stage procedure (source selection →
+  session prep → restoration → corrective EQ → de-masking → dynamics → sidechain
+  → depth/width → saturation → reverb → bus → master/delivery), a translation QA
+  gate, a plug-in → job map covering iZotope RX/Ozone, Waves Ultimate,
+  Kilohearts Ultimate and REAPER stock, and thirty operating rules.
+- **New: `TECHNIQUES.md`** — comping, layering, frequency masking, sidechaining
+  (with the exact REAPER 4-channel routing), depth vs. width, groove, stereo,
+  saturation, automation, and a failure-mode table.
+- **New: `SUNO-AI-SOURCE-FIXES.md`** — sixteen signature problems of AI-generated
+  audio, each with cause, an evidence grade (measured / reported / claimed /
+  mechanism), and the fix. Includes what mastering cannot fix, and an honest
+  assessment of the r/SunoAI resources.
+- **New: `PROMPTS.md`** — what Suno's four fields actually control, the real
+  limits, and reviews of two real prompts with rewrites.
+- **Corrected a widely repeated claim**: offsetting a duplicate recording by a
+  few milliseconds does not create depth. It is the Haas/precedence effect, it
+  produces width, and it comb-filters the source (delay *d* ms → first null at
+  `1000/(2d)` Hz, then nulls every `1000/d` Hz). The guide documents the
+  mono-safe alternatives instead, and the four cues that do read as depth.
+- **Explained why the "10-minute" prompt cannot work**: 8 minutes is the
+  per-generation ceiling; length beyond that comes from Extend, with the full
+  style prompt re-pasted into each extension to limit drift.
+
 ## 1.0.2 (2026-11-07)
 
 Bug-fix and documentation pass after auditing every script against the ReaScript API.
