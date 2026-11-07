@@ -17,8 +17,19 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.3.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.3.0 (2026-11-07)
+      <version name="1.4.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.4.0 (2026-11-07)
+  + SGM_reaper_ultra_hd_smart_tools 2.1.0: the last of the fictitious
+    "Alt key" behaviour is gone (STRETCH and SPLIT modes removed), and the
+    mode reporter actually works now - it destructured five values from
+    BR_GetMouseCursorContext, which returns three, so it had never reported
+    a single mode. Row position now comes from the SWS position helper in
+    item space, not from mixing TCP coordinates with screen coordinates.
+  + daw-discovery-analyzer 1.1.0: the Performance Meter is opened by
+    resolving the action from its description at run time. The id it used
+    before (40364) is "Options: Toggle metronome" - the report opened
+    nothing and switched the click on.
+1.3.0 (2026-11-07)
   + SGM_reaper_ultra_hd_smart_tools 2.0.0: the "4K theme generator" claim is
     gone because it could not be true. A .ReaperTheme holds colours and fonts;
     artwork lives in the .ReaperThemeZip image stack, which no ReaScript can
@@ -69,13 +80,13 @@
   + Reorganised for ReaPack: kept to the utilities I use day to day
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_route_mix_bus.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_auto_master.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/daw-discovery-analyzer.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_Utils.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_Utils.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
@@ -98,7 +109,7 @@
   + Fix: single selected-track lookup (main() and the toggle shared it)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
@@ -134,7 +145,7 @@
   + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants that the docs always promised
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_auto_master.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-friendly REAPER theme generator with WCAG contrast checking and an optional smart-tool cursor engine">
@@ -149,8 +160,23 @@
 }
 ]]></description>
       </metadata>
-      <version name="2.0.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[2.0.0 (2026-11-07)
+      <version name="2.1.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[2.1.0 (2026-11-07)
+  + Fix (F): removed the last of the fictitious "Alt key" behaviour. The
+    mode table no longer offers STRETCH (it was selected by
+    GetToggleCommandState(1009), which asks about an action, not a
+    modifier - ReaScript has no modifier-state query), and SPLIT is gone
+    too: it fired within 100 ms of the edit cursor, so the middle of any
+    item near the playhead became a split zone uninvited.
+  + Fix (G): _mode_under_mouse() destructured FIVE values from
+    BR_GetMouseCursorContext, which returns THREE strings (window, segment,
+    details). Everything past the third was nil, so the reporter returned
+    nil for every position and had never reported a single mode. It now
+    reads the three it gets, and derives the row position from
+    BR_GetMouseCursorContext_Position() (arrange time under the cursor)
+    against the item's own D+POSITION/D_LENGTH - one coordinate space on
+    both axes, instead of subtracting an unscrolled TCP Y from a screen Y.
+2.0.0 (2026-11-07)
   + Fix (honesty): this was described as a "4K theme generator". It cannot
     be one, and the claims are now gone rather than reworded. A REAPER
     theme's appearance lives in the PNG stack inside a .ReaperThemeZip;
@@ -210,7 +236,7 @@
   + Top Shelf audit: localize functions, remove _G exports (no global leaks)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
@@ -241,7 +267,7 @@
   + Add: console message when no tracks are selected
 1.0.0 (2026-06-03)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/SGM_route_mix_bus.lua</source>
       </version>
     </reapack>
     <reapack name="daw-discovery-analyzer.lua" type="script" desc="Profile the REAPER environment: plugins, routing graph, track structure, and system specs">
@@ -256,8 +282,16 @@
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 {\b Edge cases handled:} - SWS not installed: routing features limited, note printed in report - Empty project: still reports system info and audio config - No plugins found: reports \u8220"No plugins discovered\u8221"\par}
 ]]></description>
       </metadata>
-      <version name="1.0.4" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.4 (2026-11-07)
+      <version name="1.1.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.1.0 (2026-11-07)
+  + Fix (H): 1.0.3 replaced a phantom CPU function with the action id 40364,
+    labelled "View: Performance Meter". 40364 is "Options: Toggle metronome":
+    running the report opened nothing and switched the click on. The action
+    is now resolved at run time by its description
+    (SectionFromUniqueID + kbd_enumerateActions + kbd_getTextFromCmd) and
+    the id that was resolved is printed. If the lookup fails, nothing is run
+    and the report says how to open the meter by hand - no fallback number.
+1.0.4 (2026-11-07)
   + Add: the config monitor reports its on/off state to the Action List
     (SetToggleCommandState + RefreshToolbar2), so a toolbar toggle shows
     whether the defer loop is running instead of looking dead
@@ -267,8 +301,8 @@
     header). Use GetAudioDeviceInfo("SRATE") and GetNumAudioInputs/Outputs.
   + Fix: 1.0.2 replaced the non-existent GetCPULoading() with another
     non-existent function, GetCPUUsage(). REAPER exposes no CPU metric at all,
-    so the report now drives REAPER's own Performance Meter window
-    (action 40364) instead of inventing a number.
+    so the report now drives REAPER's own Performance Meter window instead of
+    inventing a number. (The id chosen here was wrong; see 1.1.0.)
 1.0.2 (2026-11-07)
   + Fix: CPU load used the non-existent reaper.GetCPULoading() and crashed the
     report (superseded by the 1.0.3 correction below)
@@ -287,7 +321,7 @@
   + System profiling: CPU, RAM, sample rate, buffer size
   + Plugin discovery and categorization
   + Signal flow graph generation exported to console]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/SGM-Essentials/daw-discovery-analyzer.lua</source>
       </version>
     </reapack>
   </category>
@@ -336,10 +370,10 @@
     phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-plugin-presets.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/phase-alignment-tool.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/phase-alignment-tool.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
@@ -386,7 +420,7 @@
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/phase-alignment-tool.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/phase-alignment-tool.lua</source>
       </version>
     </reapack>
     <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
@@ -443,8 +477,8 @@
   + 48+ track template: quad guitars, double bass, full drum kit, orchestral layers
   + Drop Bb tuning, 95-110 BPM range
   + Bus architecture with parallel compression sends]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/1f12eebce051db1afa496e9a7fae1ca4758713a9/Rule-of-30/rule-of-30-plugin-presets.lua</source>
       </version>
     </reapack>
   </category>

@@ -218,4 +218,69 @@ do
   check("declares the MIT licence", src:find("@license MIT", 1, true) ~= nil)
 end
 
+
+-- ---------------------------------------------------------------------------
+io.write("smart-tool geometry (G) and the STUBBED Alt-key branch (F)\n")
+-- ---------------------------------------------------------------------------
+do
+  local r = mock.new()
+  local host = load_host(r)
+  local engine = host.SmartToolEngine:new()
+
+  -- An item from 0s to 10s (make_item derives length from its audio, so give it
+  -- 10 s worth of frames).
+  local audio = {}
+  for i = 1, 48000 * 10 do audio[i] = 0 end
+  local item = mock.make_item({ audio = audio, position = 0.0 })
+  r._mouse_item = item
+  r._mouse_context = { window = "arrange", segment = "track", details = "item" }
+
+  local function mode_at(time)
+    r._mouse_position = time
+    local mode, err = engine:_mode_under_mouse()
+    return mode, err
+  end
+
+  local left, left_err = mode_at(0.5)
+  check("left third -> select", left == host.ToolMode.SELECTION,
+    tostring(left) .. " " .. tostring(left_err))
+
+  local middle = mode_at(5.0)
+  check("middle third -> move", middle == host.ToolMode.MOVE, tostring(middle))
+
+  local right = mode_at(9.5)
+  check("right third -> fade", right == host.ToolMode.FADE, tostring(right))
+
+  -- The 1.0.3 bug: BR_GetMouseCursorContext returns three strings, but it was
+  -- destructured into five, so this returned nil for every position.
+  check("geometry works at all (the five-return destructuring bug)",
+    left ~= nil and middle ~= nil and right ~= nil,
+    "the destructuring bug is back: every mode is nil")
+
+  -- Cursor outside the item, and not over an item: no mode, no error.
+  local outside = mode_at(20.0)
+  check("cursor past the item end reports nothing", outside == nil)
+
+  r._mouse_context = { window = "arrange", segment = "empty", details = "" }
+  local over_nothing = engine:_mode_under_mouse()
+  check("not over an item reports nothing", over_nothing == nil)
+
+  -- F: there is no Alt key query. The mode table must not contain a stretch
+  -- mode, and the engine must not consult GetToggleCommandState at all.
+  local has_stretch = false
+  for _, v in pairs(host.ToolMode) do
+    if v == "stretch" then has_stretch = true end
+  end
+  check("no stretch mode (it was driven by a fictitious Alt-key check)",
+    has_stretch == false)
+
+  local calls = 0
+  r.GetToggleCommandState = function() calls = calls + 1 return 1 end
+  r._mouse_position = 5.0
+  r._mouse_context = { window = "arrange", segment = "track", details = "item" }
+  engine:_mode_under_mouse()
+  check("never asks GetToggleCommandState for a modifier", calls == 0,
+    calls .. " call(s)")
+end
+
 io.write(string.format("\n%d passed, %d failed\n", passed, failed))

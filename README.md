@@ -29,9 +29,9 @@ Rule-of-30/                   Bundle sources + README / INSTALL / CHANGELOG / TE
 tools/gen_index.py            Regenerates index.xml from the script headers
 tools/check_api.py            Fails on any reaper.* call that is not real
 tools/api_allowlist.json      The real ones (REAPER 7.83 SDK header)
-tests/                        Mock-API suites (91 cases, no REAPER needed):
-                              run_tests.lua (22), run_phase_tests.lua (18),
-                              run_builder_tests.lua (26), run_theme_tests.lua (25)
+tests/                        Mock-API suites (103 cases, no REAPER needed):
+                              run_tests.lua (23), run_phase_tests.lua (18),
+                              run_builder_tests.lua (26), run_theme_tests.lua (36)
 tests/fixtures/               Real .ReaperTheme sample + the published key list
 docs/screenshots/             ReaPack screenshots (see the README there)
 .github/workflows/ci.yml      Syntax + API + tests + index validation
@@ -44,13 +44,23 @@ derived from those headers. After editing a header:
 ```sh
 python3 tools/gen_index.py     # rewrite versions, changelogs and sources
 python3 tools/check_api.py     # no phantom reaper.* calls
-lua5.4 tests/run_tests.lua           # 22 regression cases against a mock API
+lua5.4 tests/run_tests.lua           # 23 regression cases against a mock API
 lua5.4 tests/run_phase_tests.lua     # 18 phase-alignment cases (known offsets)
 lua5.4 tests/run_builder_tests.lua   # 26 builder / preset / parameter cases
-lua5.4 tests/run_theme_tests.lua     # 25 theme-format / colour / claim checks
+lua5.4 tests/run_theme_tests.lua     # 36 theme-format / colour / claim / smart-tool checks
 ```
 
-CI fails if any of the three disagrees with the repository. Sources in
+No Lua interpreter? `tools/runlua.py` embeds Lua through lupa so the same four
+suites run under Python, with the same pass/fail exit status:
+
+```sh
+pip install lupa
+python3 tools/runlua.py tests/run_tests.lua
+```
+
+CI runs all four suites, `check_api.py`, `gen_index.py --check`, a Lua syntax
+pass and a licence-header check, and fails if any of them disagrees with the
+repository. Sources in
 `index.xml` are pinned to a commit SHA (what `reapack-index` does with its
 `$commit` URL template), so a branch push cannot change the content of a
 version ReaPack has already cached.

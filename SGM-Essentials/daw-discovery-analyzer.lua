@@ -1,8 +1,16 @@
 -- @description Profile the REAPER environment: plugins, routing graph, track structure, and system specs
 -- @author Scott Mills
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
--- @version 1.0.4
+-- @version 1.1.0
 -- @changelog
+--   1.1.0 (2026-11-07)
+--     + Fix (H): 1.0.3 replaced a phantom CPU function with the action id 40364,
+--       labelled "View: Performance Meter". 40364 is "Options: Toggle metronome":
+--       running the report opened nothing and switched the click on. The action
+--       is now resolved at run time by its description
+--       (SectionFromUniqueID + kbd_enumerateActions + kbd_getTextFromCmd) and
+--       the id that was resolved is printed. If the lookup fails, nothing is run
+--       and the report says how to open the meter by hand - no fallback number.
 --   1.0.4 (2026-11-07)
 --     + Add: the config monitor reports its on/off state to the Action List
 --       (SetToggleCommandState + RefreshToolbar2), so a toolbar toggle shows
@@ -13,8 +21,8 @@
 --       header). Use GetAudioDeviceInfo("SRATE") and GetNumAudioInputs/Outputs.
 --     + Fix: 1.0.2 replaced the non-existent GetCPULoading() with another
 --       non-existent function, GetCPUUsage(). REAPER exposes no CPU metric at all,
---       so the report now drives REAPER's own Performance Meter window
---       (action 40364) instead of inventing a number.
+--       so the report now drives REAPER's own Performance Meter window instead of
+--       inventing a number. (The id chosen here was wrong; see 1.1.0.)
 --   1.0.2 (2026-11-07)
 --     + Fix: CPU load used the non-existent reaper.GetCPULoading() and crashed the
 --       report (superseded by the 1.0.3 correction below)
@@ -140,15 +148,65 @@ function SystemAnalyzer:getPerformanceMetrics()
   }
 end
 
--- Action 40364 = View: Performance Meter
-local PERFORMANCE_METER_ACTION = 40364
+-- Look an action up by what it is *called*, not by a number someone remembered.
+--
+-- 40364 used to sit here labelled "View: Performance Meter". It is actually
+-- "Options: Toggle metronome": the report opened nothing and switched the
+-- click on. Action IDs are stable but memory is not, so the id is resolved at
+-- run time from the action's own description.
+--
+-- kbd_enumerateActions(section, idx, nameOut) returns the command id for a slot
+-- (0 when the section is exhausted) and, for named commands, the name in
+-- nameOut. kbd_getTextFromCmd(cmd, section) is the *description* the Action
+-- List shows -- poorly named API, see its comment in the SDK header.
+local ACTION_SEARCH_LIMIT = 30000
 
-local function showPerformanceMeter()
-  if reaper.Main_OnCommand then
-    reaper.Main_OnCommand(PERFORMANCE_METER_ACTION, 0)
-    return true
+local function findActionByName(wanted)
+  if not (reaper.kbd_enumerateActions and reaper.kbd_getTextFromCmd
+          and reaper.SectionFromUniqueID) then
+    return nil, "this REAPER build does not expose the action-lookup API"
   end
-  return false
+
+  local ok_section, section = pcall(reaper.SectionFromUniqueID, 0)
+  if not ok_section or not section then
+    return nil, "could not resolve the main action section"
+  end
+
+  local target = tostring(wanted):lower()
+  for idx = 0, ACTION_SEARCH_LIMIT - 1 do
+    local ok, cmd, name = pcall(reaper.kbd_enumerateActions, section, idx, "")
+    if not ok or type(cmd) ~= "number" or cmd == 0 then break end
+
+    -- Either source can carry the match: named commands report a name, built-ins
+    -- only have their description.
+    local candidates = {}
+    if type(name) == "string" and name ~= "" then candidates[#candidates + 1] = name end
+    local ok_text, text = pcall(reaper.kbd_getTextFromCmd, cmd, section)
+    if ok_text and type(text) == "string" and text ~= "" then
+      candidates[#candidates + 1] = text
+    end
+
+    for _, candidate in ipairs(candidates) do
+      if candidate:lower():find(target, 1, true) then
+        return cmd, candidate
+      end
+    end
+  end
+
+  return nil, "no action matching '" .. tostring(wanted) .. "'"
+end
+
+-- Returns cmd, description or nil, reason. Never falls back to a guessed id.
+local function showPerformanceMeter()
+  if not reaper.Main_OnCommand then
+    return nil, "Main_OnCommand is unavailable"
+  end
+  local cmd, found = findActionByName("View: Performance Meter")
+  if not cmd then
+    return nil, found
+  end
+  reaper.Main_OnCommand(cmd, 0)
+  return cmd, found
 end
 
 function SystemAnalyzer:countActiveFX()
@@ -672,7 +730,7 @@ local function performComprehensiveAnalysis()
   reaper.ShowConsoleMsg("\n")
 
   -- Open REAPER's own Performance Meter for CPU (no ReaScript API for it)
-  local meter = showPerformanceMeter()
+  local meter, meter_detail = showPerformanceMeter()
 
   -- Signal Flow Analysis
   reaper.ShowConsoleMsg("SIGNAL FLOW:\n")
@@ -692,7 +750,15 @@ local function performComprehensiveAnalysis()
   end
 
   if meter then
-    reaper.ShowConsoleMsg("\nOpened REAPER's Performance Meter (CPU / RT CPU / RAM / disk).\n")
+    reaper.ShowConsoleMsg(string.format(
+      "\nOpened REAPER's Performance Meter (CPU / RT CPU / RAM / disk).\n"
+      .. "  resolved action %d: %s\n", meter, tostring(meter_detail)))
+  else
+    -- Say what failed and how to do it by hand. A wrong action id here would
+    -- toggle the metronome instead, which is how this went unnoticed before.
+    reaper.ShowConsoleMsg(string.format(
+      "\nCould not open the Performance Meter automatically: %s\n", tostring(meter_detail)))
+    reaper.ShowConsoleMsg("  Open it with: View > Performance Meter\n")
   end
   reaper.ShowConsoleMsg("\nAnalysis complete!\n")
 end
