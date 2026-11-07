@@ -1,7 +1,11 @@
 -- @description Auto-align quad-tracked DI guitars by transient analysis before amp processing
 -- @author Scott Mills
--- @version 1.0.2
+-- @version 1.0.3
 -- @changelog
+--   1.0.3 (2026-11-07)
+--     + Fix: reaper.GetProjectSampleRate() is not a REAPER API function (verified
+--       against the REAPER 7.83 SDK header); the project/device rate now comes
+--       from GetAudioDeviceInfo("SRATE")
 --   1.0.2 (2026-11-07)
 --     + Fix: early exits (too few tracks / no transients) left UIRefresh disabled
 --       and an undo block open — validation now happens before any begin/refresh
@@ -134,8 +138,11 @@ end
 -- PHASE ALIGNMENT ENGINE
 -- ===================================
 
+-- REAPER has no GetProjectSampleRate(); the device rate is exposed through
+-- GetAudioDeviceInfo("SRATE"). Fall back to 48 kHz when the device is closed.
 local function projectSampleRate()
-  local rate = reaper.GetProjectSampleRate()
+  local ok, srate = reaper.GetAudioDeviceInfo("SRATE", "")
+  local rate = ok and tonumber(srate) or nil
   if not rate or rate <= 0 then rate = 48000 end
   return rate
 end

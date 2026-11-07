@@ -1,10 +1,22 @@
 -- @description Profile the REAPER environment: plugins, routing graph, track structure, and system specs
 -- @author Scott Mills
--- @version 1.0.2
+-- @version 1.0.4
 -- @changelog
+--   1.0.4 (2026-11-07)
+--     + Add: the config monitor reports its on/off state to the Action List
+--       (SetToggleCommandState + RefreshToolbar2), so a toolbar toggle shows
+--       whether the defer loop is running instead of looking dead
+--   1.0.3 (2026-11-07)
+--     + Fix: GetProjectSampleRate / GetInputChannelCount / GetOutputChannelCount
+--       are not REAPER API functions (verified against the REAPER 7.83 SDK
+--       header). Use GetAudioDeviceInfo("SRATE") and GetNumAudioInputs/Outputs.
+--     + Fix: 1.0.2 replaced the non-existent GetCPULoading() with another
+--       non-existent function, GetCPUUsage(). REAPER exposes no CPU metric at all,
+--       so the report now drives REAPER's own Performance Meter window
+--       (action 40364) instead of inventing a number.
 --   1.0.2 (2026-11-07)
 --     + Fix: CPU load used the non-existent reaper.GetCPULoading() and crashed the
---       report; now uses reaper.GetCPUUsage() with a safe fallback
+--       report (superseded by the 1.0.3 correction below)
 --     + Fix: audio bit depth queried "BITDEPTH"; the API key is "BPS"
 --     + Fix: without SWS, routing edges were reported as "everything -> master";
 --       now uses the built-in P_DESTTRACK API for real send destinations
@@ -89,7 +101,12 @@ end
 function SystemAnalyzer:getAudioConfiguration()
  local audio_config = {}
 
- audio_config.sample_rate = reaper.GetProjectSampleRate()
+ -- Valid GetAudioDeviceInfo keys: MODE, IDENT_IN, IDENT_OUT, BSIZE, SRATE, BPS
+ local ok_mode, audio_system = reaper.GetAudioDeviceInfo("MODE", "")
+ audio_config.audio_system = ok_mode and audio_system or nil
+
+ local ok_srate, srate = reaper.GetAudioDeviceInfo("SRATE", "")
+ audio_config.sample_rate = ok_srate and tonumber(srate) or nil
 
  local _, device_name = reaper.GetAudioDeviceInfo("IDENT_IN", "")
  audio_config.input_device = device_name
@@ -97,12 +114,9 @@ function SystemAnalyzer:getAudioConfiguration()
  _, device_name = reaper.GetAudioDeviceInfo("IDENT_OUT", "")
  audio_config.output_device = device_name
 
- audio_config.input_channels = reaper.GetInputChannelCount()
- audio_config.output_channels = reaper.GetOutputChannelCount()
-
- -- Valid keys: MODE, IDENT_IN, IDENT_OUT, BSIZE, SRATE, BPS
- local ok_mode, audio_system = reaper.GetAudioDeviceInfo("MODE", "")
- audio_config.audio_system = ok_mode and audio_system or nil
+ -- Channel counts come from the project I/O configuration (GetNumAudioInputs/Outputs)
+ audio_config.input_channels = reaper.GetNumAudioInputs()
+ audio_config.output_channels = reaper.GetNumAudioOutputs()
 
  local ok_bsize, buffer_size = reaper.GetAudioDeviceInfo("BSIZE", "")
  audio_config.buffer_size = ok_bsize and tonumber(buffer_size) or nil
@@ -114,20 +128,26 @@ function SystemAnalyzer:getAudioConfiguration()
 end
 
 function SystemAnalyzer:getPerformanceMetrics()
-  -- reaper.GetCPUUsage() returns 0.0-1.0 (fraction of one core-ish "REAPER CPU").
-  -- Older builds may not expose it, so fall back to 0 instead of erroring out.
-  local cpu = 0
-  if reaper.GetCPUUsage then
-    local ok, value = pcall(reaper.GetCPUUsage)
-    if ok and type(value) == "number" then cpu = value end
-  end
-
+  -- REAPER exposes no CPU-usage function to ReaScript (checked against the
+  -- REAPER 7.83 SDK header: 878 exported functions, none of them a CPU metric).
+  -- Rather than invent a number, the report opens REAPER's Performance Meter,
+  -- which is the authoritative source - see showPerformanceMeter().
   return {
-    cpu_usage = cpu,
     track_count = reaper.CountTracks(0),
     active_fx_count = self:countActiveFX(),
     memory_usage_mb = collectgarbage("count") / 1024
   }
+end
+
+-- Action 40364 = View: Performance Meter
+local PERFORMANCE_METER_ACTION = 40364
+
+local function showPerformanceMeter()
+  if reaper.Main_OnCommand then
+    reaper.Main_OnCommand(PERFORMANCE_METER_ACTION, 0)
+    return true
+  end
+  return false
 end
 
 function SystemAnalyzer:countActiveFX()
@@ -525,7 +545,10 @@ function ConfigMonitor:captureCurrentState()
     track_count = reaper.CountTracks(0),
     item_count = reaper.CountMediaItems(0),
     tempo = reaper.Master_GetTempo(),
-    sample_rate = reaper.GetProjectSampleRate(),
+    sample_rate = (function()
+      local ok, srate = reaper.GetAudioDeviceInfo("SRATE", "")
+      return ok and tonumber(srate) or nil
+    end)(),
     track_configs = self:captureAllTrackConfigs()
   }
 end
@@ -623,12 +646,16 @@ local function performComprehensiveAnalysis()
   reaper.ShowConsoleMsg("  OS: " .. sys_report.system.os .. "\n")
   reaper.ShowConsoleMsg("  REAPER: " .. sys_report.system.reaper_version .. "\n")
   reaper.ShowConsoleMsg("  Audio System: " .. tostring(sys_report.audio.audio_system) .. "\n")
-  reaper.ShowConsoleMsg("  Sample Rate: " .. tostring(sys_report.audio.sample_rate) .. " Hz\n")
+  reaper.ShowConsoleMsg("  Sample Rate: "
+    .. (sys_report.audio.sample_rate and (sys_report.audio.sample_rate .. " Hz") or "n/a (device closed)")
+    .. "\n")
   reaper.ShowConsoleMsg("  Buffer Size: " .. tostring(sys_report.audio.buffer_size) .. " samples\n")
   reaper.ShowConsoleMsg("  Bit Depth: " .. (sys_report.audio.bit_depth and (sys_report.audio.bit_depth .. " bit") or "n/a") .. "\n")
-  reaper.ShowConsoleMsg("  CPU: " .. string.format("%.1f", sys_report.performance.cpu_usage * 100) .. "%\n")
+  reaper.ShowConsoleMsg("  I/O Channels: " .. tostring(sys_report.audio.input_channels)
+    .. " in / " .. tostring(sys_report.audio.output_channels) .. " out\n")
   reaper.ShowConsoleMsg("  Memory (Lua heap): " .. string.format("%.1f", sys_report.performance.memory_usage_mb) .. " MB\n")
-  reaper.ShowConsoleMsg("  Active FX: " .. sys_report.performance.active_fx_count .. "\n\n")
+  reaper.ShowConsoleMsg("  Active FX: " .. sys_report.performance.active_fx_count .. "\n")
+  reaper.ShowConsoleMsg("  CPU: see the Performance Meter window (ReaScript has no CPU API)\n\n")
 
   -- Plugin Analysis
   reaper.ShowConsoleMsg("PLUGIN ANALYSIS:\n")
@@ -642,6 +669,9 @@ local function performComprehensiveAnalysis()
     end
   end
   reaper.ShowConsoleMsg("\n")
+
+  -- Open REAPER's own Performance Meter for CPU (no ReaScript API for it)
+  local meter = showPerformanceMeter()
 
   -- Signal Flow Analysis
   reaper.ShowConsoleMsg("SIGNAL FLOW:\n")
@@ -660,6 +690,9 @@ local function performComprehensiveAnalysis()
     end
   end
 
+  if meter then
+    reaper.ShowConsoleMsg("\nOpened REAPER's Performance Meter (CPU / RT CPU / RAM / disk).\n")
+  end
   reaper.ShowConsoleMsg("\nAnalysis complete!\n")
 end
 
@@ -672,6 +705,18 @@ local function monitorConfigChanges()
 
   reaper.ShowConsoleMsg("=== CONFIG MONITOR STARTED ===\n")
   reaper.ShowConsoleMsg("Make changes to your project...\n\n")
+
+  -- Tell the toolbar that the monitor is running (otherwise the action's
+  -- toggle state never changes and the button looks broken).
+  local _, _, section, cmd = reaper.get_action_context()
+  local running = true
+  local function publish()
+    if section and cmd and cmd ~= 0 then
+      reaper.SetToggleCommandState(section, cmd, running and 1 or 0)
+      reaper.RefreshToolbar2(section, cmd)
+    end
+  end
+  publish()
 
   -- Monitor in a defer loop
   local function check_changes()
@@ -692,7 +737,7 @@ local function monitorConfigChanges()
       reaper.ShowConsoleMsg("\n")
     end
 
-    reaper.defer(check_changes)
+    if running then reaper.defer(check_changes) end
   end
 
   reaper.defer(check_changes)

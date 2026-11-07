@@ -26,12 +26,28 @@ Free REAPER ReaScripts by **Scott Mills / SGM Studios**, distributed via [ReaPac
 index.xml                     ReaPack package index (generated, do not hand-edit)
 SGM-Essentials/               Bundle sources + README / INSTALL / CHANGELOG / TEST_CASES
 Rule-of-30/                   Bundle sources + README / INSTALL / CHANGELOG / TEST_CASES
-.github/workflows/ci.yml      Lua 5.4 syntax check + index.xml validation
-.reapack-index.conf           reapack-index settings (name, about, amend)
+tools/gen_index.py            Regenerates index.xml from the script headers
+tools/check_api.py            Fails on any reaper.* call that is not real
+tools/api_allowlist.json      The real ones (REAPER 7.83 SDK header)
+tests/                        Mock-API regression suite (21 cases, no REAPER needed)
+docs/screenshots/             ReaPack screenshots (see the README there)
+.github/workflows/ci.yml      Syntax + API + tests + index validation
+.reapack-index.conf           reapack-index settings (name, about, amend, links)
 ```
 
-Package versions live in each script's `@version` header; `index.xml` must be
-regenerated (`reapack-index`) after bumping one. CI fails if the two disagree.
+Package versions live in each script's `@version` header, and `index.xml` is
+derived from those headers. After editing a header:
+
+```sh
+python3 tools/gen_index.py     # rewrite versions, changelogs and sources
+python3 tools/check_api.py     # no phantom reaper.* calls
+lua5.4 tests/run_tests.lua     # 21 regression cases against a mock API
+```
+
+CI fails if any of the three disagrees with the repository. Sources in
+`index.xml` are pinned to a commit SHA (what `reapack-index` does with its
+`$commit` URL template), so a branch push cannot change the content of a
+version ReaPack has already cached.
 
 ## Requirements
 

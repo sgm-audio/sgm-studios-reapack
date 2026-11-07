@@ -1,7 +1,13 @@
 -- @description 4K-optimized REAPER theme with WCAG-checked colors and a smart-tool cursor engine
 -- @author Scott Mills
--- @version 1.0.2
+-- @version 1.0.3
 -- @changelog
+--   1.0.3 (2026-11-07)
+--     + Add: the smart-tool engine reports its on/off state to the Action List
+--       (SetToggleCommandState) and refreshes the toolbar, so a toolbar button
+--       reflects whether the defer loop is actually running
+--     + Fix: the defer loop is wrapped in xpcall; an error in one tick stops the
+--       loop and says so instead of silently freezing
 --   1.0.2 (2026-11-07)
 --     + Fix: smart tools passed numeric cursor ids to SetMouseModifier(), which only
 --       accepts mouse-modifier / action ID strings — it was silently corrupting the
@@ -347,6 +353,16 @@ function SmartToolEngine:toggle_ai_prediction()
     return self.ai_prediction_enabled
 end
 
+-- Report the engine's real state to the Action List. Without this a toolbar
+-- button stays lit after the loop has died, and toggling it does nothing.
+function SmartToolEngine:_publish_state()
+    local _, _, section, cmd = reaper.get_action_context()
+    self.command_id = cmd
+    if not section or not cmd or cmd == 0 then return end
+    reaper.SetToggleCommandState(section, cmd, self.running and 1 or 0)
+    reaper.RefreshToolbar2(section, cmd)
+end
+
 function SmartToolEngine:start()
     if not reaper.BR_GetMouseCursorContext then
         msg("Smart tools need the SWS extension for mouse context — not started.")
@@ -355,6 +371,7 @@ function SmartToolEngine:start()
     end
 
     self.running = true
+    self:_publish_state()
     msg("=== Smart Tools Activated ===")
     msg("Pro Tools-style context switching enabled (cursor tool is reported in the console).")
     msg("Mouse modifiers are left untouched.")
@@ -363,18 +380,26 @@ function SmartToolEngine:start()
     reaper.defer(function() self:_smart_tool_loop() end)
 end
 
+-- One tick. xpcall keeps a single bad frame (a project closed mid-drag, an SWS
+-- call returning nil, ...) from killing the loop with no diagnostics: the loop
+-- stops, the toggle state is corrected, and the error is printed once.
 function SmartToolEngine:_smart_tool_loop()
     if not self.running then return end
-    
-    -- Update smart tools
-    self:update()
-    
-    -- Continue loop
+
+    local ok, err = xpcall(function() self:update() end, debug.traceback)
+    if not ok then
+        self.running = false
+        self:_publish_state()
+        msg("Smart tools stopped after an error:\n" .. tostring(err))
+        return
+    end
+
     reaper.defer(function() self:_smart_tool_loop() end)
 end
 
 function SmartToolEngine:stop()
     self.running = false
+    self:_publish_state()
     msg("Smart tools deactivated. (No mouse modifiers were changed.)")
 end
 

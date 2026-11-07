@@ -1,8 +1,11 @@
 -- @description SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment
 -- @author Scott Mills
--- @version 1.0.2
+-- @version 1.0.3
 -- @metapackage
 -- @changelog
+--   1.0.3 (2026-11-07)
+--     + phase-alignment-tool 1.0.3: project sample rate comes from
+--       GetAudioDeviceInfo("SRATE") instead of a non-existent API function
 --   1.0.2 (2026-11-07)
 --     + Bug-fix pass: session builder no longer crashes when building without a
 --       plugin inventory, sidechain sends are guarded/deduplicated, tempo marker
