@@ -1,11 +1,24 @@
 # Rule of 30 for REAPER
 
-**A heavy metal production system — 48-track session builder, plugin chain reference, and DI phase alignment.**
+**A heavy metal production system — 48-track session builder, plugin chain reference, and DI phase alignment. Plus the mixing guide, technique list and AI-source fix reference.**
 
 Three scripts for heavy industrial / metal production: Drop Bb tuning, 95–110 BPM,
 quad-tracked guitars, split bass, and augmentation layers.
 
 ---
+
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| **[MIXING-GUIDE.md](MIXING-GUIDE.md)** | The step-by-step procedure: 12 stages from source selection to delivery, the plug-in → job map, and the thirty rules. Written for a Suno/AI-sourced or hybrid session, mapped to iZotope RX + Ozone, Waves Ultimate, Kilohearts Ultimate and REAPER stock. |
+| **[TECHNIQUES.md](TECHNIQUES.md)** | The technique list: comping, layering, frequency masking and de-masking, sidechaining (with exact REAPER routing), depth vs. width, groove, automation, and the failure-mode table. |
+| **[SUNO-AI-SOURCE-FIXES.md](SUNO-AI-SOURCE-FIXES.md)** | Every known signature problem of AI-generated audio — 16 of them — with cause, evidence grade, and what actually works. Includes what mastering cannot fix, and what is and is not in the r/SunoAI resources. |
+| **[PROMPTS.md](PROMPTS.md)** | What Suno's fields actually control, the limits, a review of two real prompts, and the rewritten versions. |
+
+The scripts below build a heavy-metal session; the four documents above are
+genre-agnostic and cover the AI-source pipeline the scripts are usually used
+alongside.
 
 ## Included Scripts
 
