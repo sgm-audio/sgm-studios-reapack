@@ -1,3 +1,4 @@
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- Tests for the theme generator in SGM_reaper_ultra_hd_smart_tools.lua.
 --
 -- The point of these is narrow and deliberate: a theme file that REAPER silently
