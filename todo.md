@@ -138,9 +138,14 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
       Values it could not map are named individually.
 - [ ] Licence/theme sharing: done as far as code can do it — `LICENSE-THEMES.md`,
       provenance headers in generated files, preserved author comments, and a CI
-      guard that every script declares MIT. The remaining item is not technical:
-      decide whether to keep the "start from the stock theme" advice as the
-      recommended path in the README (currently the second option, not the first).
+      guard that every script declares MIT.
+      *The one decision left is mine, not a user's:* the README leads with
+      "inherit whatever theme you have loaded" and mentions the stock-theme route
+      afterwards. In practice essentially every third-party theme ships as a
+      `.ReaperThemeZip` (all 7 packages in ReaTeam/Themes, all 74 Flat Madness
+      packages), so "inherit" fails for most people and the stock-theme route is
+      the only one that works. Either lead with it, or make the script handle zips
+      by unzipping and reading the inner file.
 - [ ] Still open from this section: confirm in real REAPER that the four chain
       buttons produce the chains the tests describe (the mock cannot prove that a
       plug-in's parameter list matches the parameter names used here).
