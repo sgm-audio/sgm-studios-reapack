@@ -27,9 +27,30 @@ Bug-fix and documentation pass after auditing every script against the ReaScript
   - Fixed: bypass state was written to FX slots that do not exist.
   - Fixed: "No FX found on selected track." is now actually printed (per TEST_CASES).
   - Fixed: no undo point when nothing was toggled.
+- **SGM_reaper_ultra_hd_smart_tools 1.0.3**
+  - Added: the smart-tool engine now reports its real state with
+    `SetToggleCommandState` + `RefreshToolbar2`, so a toolbar button reflects
+    whether the defer loop is running (it used to stay lit after the loop died).
+  - Fixed: the defer loop is wrapped in `xpcall`; an error in one tick stops the
+    loop, corrects the toggle state and prints the traceback instead of dying
+    silently.
+- **daw-discovery-analyzer 1.0.4**
+  - Added: the config monitor publishes its running state to the Action List, for
+    the same reason.
+- **daw-discovery-analyzer 1.0.3**
+  - Fixed (corrects 1.0.2): 1.0.2 replaced the non-existent `GetCPULoading()` with
+    `GetCPUUsage()`, which also does not exist. **REAPER exposes no CPU metric to
+    ReaScript at all** (verified against the REAPER 7.83 SDK header — 878 exported
+    functions, none of them a CPU/performance counter). The report now says so and
+    opens REAPER's own Performance Meter (action `40364`) instead of inventing a
+    number.
+  - Fixed: `GetProjectSampleRate()`, `GetInputChannelCount()` and
+    `GetOutputChannelCount()` are not API functions either. Sample rate now comes
+    from `GetAudioDeviceInfo("SRATE")`, channels from `GetNumAudioInputs()` /
+    `GetNumAudioOutputs()`.
+  - Fixed: a closed audio device printed `nil Hz`; it now prints
+    `n/a (device closed)`.
 - **daw-discovery-analyzer 1.0.2**
-  - Fixed: the report called the non-existent `reaper.GetCPULoading()` and crashed
-    on every run; now uses `reaper.GetCPUUsage()` with a fallback.
   - Fixed: audio bit depth queried `"BITDEPTH"`; the API key is `"BPS"`.
   - Fixed: without SWS every routing edge pointed at `master`; the built-in
     `P_DESTTRACK` API now supplies the real destination (plus parent sends).
@@ -44,6 +65,13 @@ Bug-fix and documentation pass after auditing every script against the ReaScript
     and the `Shift+F12` / `Ctrl+Alt+U` shortcuts — none of them ever existed.
   - Fixed: a failed theme write is reported instead of printed as success.
   - Fixed: author/metadata now matches the rest of the repository.
+- **phase-alignment-tool 1.0.3**
+  - Fixed: `reaper.GetProjectSampleRate()` does not exist; the project rate is now
+    read with `GetAudioDeviceInfo("SRATE")`, with a 48 kHz fallback when no device
+    is open.
+- **Bundles**: `SGM_CoreUtilities_Bundle` 1.1.3 and `SGM_RuleOf30_Bundle` 1.0.3
+  pick up the two script fixes (ReaPack only offers an update when the
+  metapackage version itself changes).
 - **SGM_Utils 1.0.1**
   - Fixed: `Utils.trim()` used `(.-)` (not a Lua pattern) and returned an empty
     string for every input.

@@ -14,7 +14,7 @@ Six runnable scripts plus a shared library and a ReaPack metapackage. All free, 
 | **SGM_auto_master.lua** | [main] | One-click mastering chain on the master bus: ReaEQ high-pass → ReaComp → ReaLimit. Configurable at the top of the script, with a confirmation dialog before existing master FX are replaced. |
 | **SGM_FieldyBagToggle.lua** | [main] | Toggles between two bass FX chains: Fieldy (slots 1–3) and Dimebag (slots 4–6). Enables one set and bypasses the other; only touches slots that actually exist. |
 | **SGM_reaper_ultra_hd_smart_tools.lua** | [main] | Writes a 4K-friendly `.ReaperTheme` file with a WCAG contrast check (AAA 7:1 target), and can optionally start an experimental smart-tool cursor engine. |
-| **daw-discovery-analyzer.lua** | [main] | Profiles the REAPER environment — OS, REAPER version, audio system/device, sample rate, buffer size and bit depth, CPU/memory, plugin inventory, track structure and routing graph. Outputs a console report. |
+| **daw-discovery-analyzer.lua** | [main] | Profiles the REAPER environment — OS, REAPER version, audio system/device, sample rate, buffer size and bit depth, Lua memory, plugin inventory, track structure and routing graph. Outputs a console report and opens REAPER's Performance Meter for CPU figures (ReaScript has no CPU API). |
 | **SGM_Utils.lua** | [nomain] | Shared utility library (string/math/path helpers, REAPER color helpers, a small JSON parser, stem classification). Available for your own scripts — **none of the bundled scripts load it automatically**. |
 | **SGM_CoreUtilities_Bundle.lua** | [nomain] / metapackage | ReaPack metapackage — installing this pulls in all six scripts above. |
 

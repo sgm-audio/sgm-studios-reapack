@@ -159,10 +159,19 @@
   1. Run daw-discovery-analyzer
   2. Enter `1` (Comprehensive Analysis)
   3. Open View → Console
-- **Expected Result**: Cleanly formatted report showing audio system, sample rate, buffer size, bit depth, CPU %, Lua heap, active FX count, plugin categories, track/connection counts. **No `attempt to call a nil value (field 'GetCPULoading')` error.**
+- **Expected Result**: Cleanly formatted report showing audio system, sample rate, buffer size, bit depth, Lua heap, active FX count, plugin categories, track/connection counts. The CPU line reads `CPU: see the Performance Meter window` and REAPER's Performance Meter opens (action 40364). **No `attempt to call a nil value (field ...)` error for any of `GetCPULoading`, `GetCPUUsage`, `GetProjectSampleRate`, `GetInputChannelCount`, `GetOutputChannelCount`.**
 - **Pass**: [ ] / [ ]
 
-### TC-DD-02: Run with SWS not installed
+### TC-DD-02: Run with no audio device open
+- **Prerequisites**: Any REAPER project; close the audio device (Preferences →
+  Audio → Device → uncheck "Close audio device when stopped...") or start REAPER
+  with no device.
+- **Steps**: Run daw-discovery-analyzer → `1` → check the console.
+- **Expected Result**: The Sample Rate line reads `n/a (device closed)`, not
+  `nil Hz`. The report completes.
+- **Pass**: [ ] / [ ]
+
+### TC-DD-03: Run with SWS not installed
 - **Prerequisites**: SWS Extension NOT installed. Any project.
 - **Steps**:
   1. Run daw-discovery-analyzer
@@ -194,4 +203,5 @@
 | TC-ST-03 | [ ] / [ ] |
 | TC-DD-01 | [ ] / [ ] |
 | TC-DD-02 | [ ] / [ ] |
-| **Total Pass** | **\_\_/18** |
+| TC-DD-03 | [ ] / [ ] |
+| **Total Pass** | **\_\_/19** |

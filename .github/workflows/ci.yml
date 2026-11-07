@@ -24,14 +24,40 @@ jobs:
           done < <(git ls-files '*.lua')
           exit $fail
 
+  api-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every reaper.* call must exist in the REAPER API
+        # tools/api_allowlist.json is generated from the official SDK header
+        # (justinfrankel/reaper-sdk). This is the check that catches phantom
+        # functions such as GetCPULoading() / GetCPUUsage() / GetProjectSampleRate().
+        run: python3 tools/check_api.py
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.4
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Run the mock-API regression suite
+        run: lua5.4 tests/run_tests.lua
+
   index-xml:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tools/gen_index.py checks the pinned commits exist
+      - name: index.xml matches the script headers
+        # Versions, changelogs and sources are derived from the @version /
+        # @author / @changelog / @provides headers. If this fails, run
+        # `python3 tools/gen_index.py` and commit the result.
+        run: python3 tools/gen_index.py --check
       - name: Validate index.xml
         run: |
           python3 - <<'PY'
-          import os, sys, urllib.parse
+          import os, re, sys, urllib.parse
           import xml.etree.ElementTree as ET
 
           tree = ET.parse("index.xml")
@@ -41,18 +67,37 @@ jobs:
           srcs = list(root.iter("source"))
           print(f"{len(srcs)} source entries in {len(list(root.iter('reapack')))} packages")
 
+          # ReaPack sources are either <repo>/raw/<ref>/<path> or, for the
+          # SHA-pinned form reapack-index writes, <repo>/raw/$commit/<path>.
+          REF = re.compile(r"/raw/(main|master|[0-9a-f]{7,40})/(.+)$")
+
+          def path_of(url):
+              m = REF.search(urllib.parse.urlparse(url).path)
+              if not m:
+                  problems.append(f"unrecognised source URL: {url}")
+                  return None, None
+              return m.group(1), urllib.parse.unquote(m.group(2))
+
+          link_rels = []
+          for pkg in root.iter("reapack"):
+              for link in pkg.iter("link"):
+                  rel = (link.get("rel") or "website").strip()
+                  link_rels.append(rel)
+                  if rel not in ("website", "screenshot", "donation"):
+                      problems.append(f"{pkg.get('name')}: invalid link rel={rel!r}")
+                  if not (link.get("href") or "").strip():
+                      problems.append(f"{pkg.get('name')}: <link rel={rel}> without href")
+
           for s in srcs:
               url = (s.text or "").strip()
               if not url:
                   problems.append(f"empty source in {s.attrib}")
                   continue
-
               # Every source must point at a file that exists in the repository,
               # otherwise ReaPack installs a package with missing files.
-              if "/raw/main/" in url:
-                  rel = urllib.parse.unquote(url.split("/raw/main/", 1)[1])
-                  if not os.path.isfile(rel):
-                      problems.append(f"missing file for source: {rel}")
+              ref, rel = path_of(url)
+              if rel and not os.path.isfile(rel):
+                  problems.append(f"missing file for source: {rel}")
 
           # Package versions in the index must match the @version header.
           for pkg in root.iter("reapack"):
@@ -67,12 +112,12 @@ jobs:
               match = [x for x in sources
                        if os.path.basename(urllib.parse.unquote(x.text.strip())) == pkg.get("name")]
               if match:
-                  rel = urllib.parse.unquote(match[0].text.strip().split("/raw/main/", 1)[-1])
+                  rel = path_of(match[0].text.strip())[1]
               elif len(sources) == 1:
-                  rel = urllib.parse.unquote(sources[0].text.strip().split("/raw/main/", 1)[-1])
+                  rel = path_of(sources[0].text.strip())[1]
               else:
                   continue
-              if not os.path.isfile(rel):
+              if not rel or not os.path.isfile(rel):
                   continue
               with open(rel, encoding="utf-8") as fh:
                   header = [ln for ln in fh if ln.startswith("-- @version ")][:1]
@@ -83,10 +128,13 @@ jobs:
                       f"{pkg.get('name')}: index has {version.get('name')}, "
                       f"header has {header[0].split(None, 2)[2].strip()}"
                   )
+              # Every package should point users at the project page.
+              if not any(x.get("rel") == "website" for x in pkg.iter("link")):
+                  problems.append(f"{pkg.get('name')}: no website <link>")
 
           for p in problems:
               print("ERROR:", p)
           if problems:
               sys.exit(1)
-          print("index.xml OK")
+          print(f"index.xml OK ({len(link_rels)} metadata links)")
           PY

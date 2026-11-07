@@ -11,7 +11,17 @@ script executed against a mocked `reaper` API covering its main code path
 **Not performed:** running inside real REAPER — see the `TEST_CASES.md` files in
 each bundle.
 
-Version bumps: Essentials bundle **1.1.2**, Rule-of-30 bundle **1.0.2**.
+Version bumps: Essentials bundle **1.1.3**, Rule-of-30 bundle **1.0.3**.
+
+> **Correction (same day, second pass).** Item 5 below was wrong. `GetCPUUsage()`
+> does **not** exist either — see
+> [§7 Corrections](#7-corrections-to-this-report). The first pass trusted a GitHub
+> code-search hit count instead of the SDK header, and the same mistake had already
+> been made once (`GetCPULoading` → `GetCPUUsage`). Everything in this report is now
+> checked against the authoritative function list, and the check is automated:
+> `tools/check_api.py` runs in CI and fails on any call that is not in the REAPER
+> 7.83 SDK header. The unit tests in `tests/` (21 cases) run every main code path
+> against a mock API.
 
 ---
 
@@ -23,7 +33,7 @@ Version bumps: Essentials bundle **1.1.2**, Rule-of-30 bundle **1.0.2**.
 | 2 | `rule-of-30-session-builder.lua` | `CreateTrackSend()` can return `-1`; the following `SetTrackSendInfo_Value(..., -1, ...)` then errors. | All send creation guarded; failures reported to the console. |
 | 3 | `SGM_auto_master.lua` | The stock limiter is called **`ReaLimit`**; the script asked for `ReaLimiter`, so no limiter was ever added (silently). | Correct plug-in name. |
 | 4 | `SGM_auto_master.lua` | The ReaEQ high-pass wrote raw values into parameter indices 0–3, which are the *band enable* toggles — the EQ was mis-set, not a 30 Hz high-pass. | Uses `TrackFX_SetEQParam` + `TrackFX_SetEQBandEnabled`; other FX params are found by name instead of hard-coded indices. |
-| 5 | `daw-discovery-analyzer.lua` | `reaper.GetCPULoading()` does not exist (0 results in a GitHub code search; `GetCPUUsage` has 129). Every "Comprehensive Analysis" run crashed on that line. | `reaper.GetCPUUsage()` with an existence check and fallback. |
+| 5 | `daw-discovery-analyzer.lua` | `reaper.GetCPULoading()` does not exist. Every "Comprehensive Analysis" run crashed on that line. | ~~`reaper.GetCPUUsage()`~~ — **that was also wrong**; see §7. Final fix: the report opens REAPER's Performance Meter (action `40364`) and states that ReaScript has no CPU API. |
 | 6 | `daw-discovery-analyzer.lua` | Audio bit depth queried `"BITDEPTH"`; the documented keys are `MODE, IDENT_IN, IDENT_OUT, BSIZE, SRATE, BPS`. | Queries `BPS` (and `MODE`), with nil-safe formatting. |
 | 7 | `SGM_reaper_ultra_hd_smart_tools.lua` | `SetMouseModifier("MM_CTX_ITEM", 0, cursor_id)` was called with invented numbers (182–185). The API only accepts mouse-modifier / command ID **strings** — this silently wrote invalid values into the user's mouse-modifier prefs. | The engine no longer touches mouse modifiers; it logs the resolved tool. Saving/restoring a modifier it never set is gone too. |
 | 8 | `phase-alignment-tool.lua` | Both early exits (`< 2` tracks, no transients) returned *after* `PreventUIRefresh(1)` and `Undo_BeginBlock()`, leaving the arrange view frozen/undrawn and an undo block open. | Validation happens before anything is opened; the no-transient path unwinds the refresh. |
@@ -133,3 +143,52 @@ Version bumps: Essentials bundle **1.1.2**, Rule-of-30 bundle **1.0.2**.
   as separate packages (bundles carry them), so `@noindex` on both is correct.
 - `Utils.JSON.parse` is deliberately small (numbers, strings, arrays, objects,
   booleans, null). It is not a drop-in for arbitrary JSON (no `\uXXXX` handling).
+
+---
+
+## 6. Second pass: tooling added
+
+The first pass found bugs by reading; the bugs it *missed* were the ones that only
+show up when a call is checked against the real API. So the checks are now part of
+the repository instead of living in the audit:
+
+| What | Where | What it catches |
+|------|-------|-----------------|
+| API-name check | `tools/check_api.py` + `tools/api_allowlist.json` | Any `reaper.*` call not in the REAPER 7.83 SDK header (878 functions) or the SWS allowlist. This is the check that would have caught items 5 and 12–14 before release. |
+| Use-before-`local` check | same | `attempt to call a nil value (global 'x')` — the item-1 crash class. |
+| `PreventUIRefresh` balance | same (per function, following helper calls) | Frozen arrange view after an early return — the item-8 class. |
+| Runtime regression suite | `tests/run_tests.lua` + `tests/reaper_mock.lua` (21 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
+| CI | `.github/workflows/ci.yml` | `lua5.4 -p`, the API check, the test suite, and the stricter `index.xml` validation. |
+
+Both `tools/check_api.py` and the test suite fail loudly on the pre-fix tree: run
+against `894f50a` the API check reports 7 unknown calls in 2 files.
+
+## 7. Corrections to this report
+
+**Item 5 (CPU metric) was wrong.** The first pass claimed `reaper.GetCPUUsage()` was
+the correct replacement for `GetCPULoading()` on the strength of a GitHub code-search
+hit count (129 hits), which measures how often a name is repeated in other people's
+infected code, not whether it is real.
+
+Checked properly against `reaper_plugin_functions.h` as generated by **REAPER v7.83**:
+
+- 878 exported functions; searching for `cpu`, `perf`, `load` or `metric` returns only
+  `GetCurrentProjectInLoadSave`, `LICE_LoadPNG` and `LICE_LoadPNGFromResource`.
+- **There is no CPU, RT-CPU, RAM or disk metric available to ReaScript at all.** The
+  Performance Meter is a C++ window; the only ReaScript-visible figure is Lua's own
+  heap, via `collectgarbage("count")`.
+- Consequently the analyzer **cannot** show CPU load. It opens the Performance Meter
+  (`Main_OnCommand(40364, 0)`) and the report says so.
+
+The same header check invalidated three more calls that the first pass introduced or
+left in place:
+
+| Wrong call | Real API |
+|------------|----------|
+| `reaper.GetProjectSampleRate()` | `reaper.GetAudioDeviceInfo("SRATE", "")` → success flag + string; returns `false` when no device is open, so both callers have a fallback |
+| `reaper.GetInputChannelCount()` | `reaper.GetNumAudioInputs()` |
+| `reaper.GetOutputChannelCount()` | `reaper.GetNumAudioOutputs()` |
+
+**Lesson applied:** never accept an API name without checking it against the SDK
+header. `tools/check_api.py` now enforces that, and the allowlist records the exact
+header it was generated from.

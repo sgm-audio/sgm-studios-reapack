@@ -1,8 +1,15 @@
 -- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
 -- @author Scott Mills
--- @version 1.1.2
+-- @version 1.1.3
 -- @metapackage
 -- @changelog
+--   1.1.3 (2026-11-07)
+--     + daw-discovery-analyzer 1.0.4: no non-existent API calls
+--       (GetProjectSampleRate / GetInputChannelCount / GetOutputChannelCount),
+--       CPU reports now open REAPER's Performance Meter, and the config monitor
+--       publishes its running state to the Action List
+--     + SGM_reaper_ultra_hd_smart_tools 1.0.3: the smart-tool engine reports its
+--       on/off state to the toolbar and survives an error inside the defer loop
 --   1.1.2 (2026-11-07)
 --     + Bug-fix pass: auto-master limiter name + ReaEQ band setup, mix-bus
 --       selection/folder handling, analyzer CPU + audio-device keys, smart-tool
