@@ -192,3 +192,37 @@ left in place:
 **Lesson applied:** never accept an API name without checking it against the SDK
 header. `tools/check_api.py` now enforces that, and the allowlist records the exact
 header it was generated from.
+
+---
+
+## 8. Third pass: what the name check could not see
+
+`tools/check_api.py` proves a function **exists**. It cannot prove the script
+passes it the right arguments, and three of the four remaining fatal bugs are of
+exactly that kind. Verified this time against the function prototypes in
+`reaper_plugin_functions.h` (REAPER 7.83) and against the C++ that calls the same
+actions.
+
+| # | File | Problem | Severity |
+|---|------|---------|----------|
+| A | `SGM_auto_master.lua` | `TrackFX_SetParam(track, fx, param, value)` sets a **normalized 0..1** value. The script passes engineering units: `-18`, `2`, `10`, `100`, `-1.0`. Normalized params clamp at 0..1, so Threshold = 1.0 (loudest possible), Ratio = 2.0, Attack = 10, Release = 100, Ceiling = 1.0 (**+1 dB, louder than the source**). The "mastering chain" increases the level and the console reports success. `TrackFX_SetEQParam` is *not* affected: its `isnorm` argument is `false`, which is correct. | fatal, silent |
+| B | `rule-of-30-session-builder.lua` | `SetTempoTimeSigMarker` takes **9** args; the calls pass 8. `CONFIG.bpm` lands in `beatpos` and `timesig_num` lands in `bpm`, so every session is built at **~4 BPM** (and time signature 95/110). | fatal, silent |
+| C | `phase-alignment-tool.lua` | `reaper.new_array` is **1-based**. The transient scan reads `audio_buffer[frame * num_channels]`, so frame 0 reads `nil`→0, frame 1 reads frame 0's sample, and every stereo take is analysed at half its real sample offset. The phase alignment is off by the length of the analysis window. | wrong result |
+| D | `rule-of-30-session-builder.lua` | `addFX` calls `TrackFX_AddByName(track, name, false, -1)`; `instantiate = -1` inserts a **new instance every run**. Chains added three times are inserted three times. | duplicates |
+| E | `rule-of-30-session-builder.lua` | The 48-track skeleton is wrapped in one undo block. Stock FX are inserted onto a *master* track whose name is replaced, but the master FX chain is never cleared, so `ReaComp`/`ReaEQ` stack up on every build. | duplicates |
+| F | `SGM_reaper_ultra_hd_smart_tools.lua` | `GetToggleCommandState(1009)` is documented as "Alt key". It is **not a modifier state** — it asks whether some action id 1009 is toggled. Alt is `GetModifierKeyState`, which does not exist in the ReaScript API, so the branch is unfixable as written and must be removed. The branch is dead code anyway: `_update_cursor_visual` only logs. | misleading |
+| G | `SGM_reaper_ultra_hd_smart_tools.lua` | `_calculate_tool_mode` mixes coordinate spaces: `I_TCPY`/`I_TCPH` are TCP-relative and unscrolled (negative when scrolled down), while `GetMousePosition` is screen-space. `relative_y` is therefore meaningless. | wrong result |
+| H | `daw-discovery-analyzer.lua` | `local PERFORMANCE_METER_ACTION = 40364` with the comment "View: Performance Meter". **40364 is "Options: Toggle metronome"** (SWS `Misc/Adam.cpp`: `Main_OnCommand(40364, 0); // Toggle built in metronome`). Running the analyzer toggles the click while telling the user it opened the meter. | wrong + side effect |
+
+Findings A–H are documented here and queued in `todo.md`. They are **not fixed in
+this commit**: each needs a REAPER-side test, and changing the FX/tempo/send
+behaviour without one is how the previous two passes produced new bugs.
+
+### Why the previous pass said the opposite
+
+§7 concluded "there is no CPU metric, so open the Performance Meter". The
+conclusion was right; the action ID was invented. A tool cannot verify the
+existence of a number it was given, so the fix is not another number — it is
+resolving the action by name at run time (`kbd_enumerateActions` +
+`kbd_getCommandName`, both confirmed present in the header) and reporting when it
+cannot be found.
