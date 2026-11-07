@@ -1,7 +1,7 @@
 -- @description Route all tracks through a Mix Bus, then Mix Bus to Master
 -- @author Scott Mills
 -- @version 1.1.0
--- @license MIT
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @changelog
 --   1.1.0 (2026-11-07)
 --     + Add: uses the shared SGM_Utils library when it is installed (message

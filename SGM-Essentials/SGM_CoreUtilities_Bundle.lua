@@ -1,8 +1,29 @@
 -- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
 -- @author Scott Mills
--- @version 1.2.0
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
+-- @version 1.3.0
 -- @metapackage
 -- @changelog
+--   1.3.0 (2026-11-07)
+--     + SGM_reaper_ultra_hd_smart_tools 2.0.0: the "4K theme generator" claim is
+--       gone because it could not be true. A .ReaperTheme holds colours and fonts;
+--       artwork lives in the .ReaperThemeZip image stack, which no ReaScript can
+--       author, and DPI scaling is REAPER's, not a file's. The generator now
+--       inherits your loaded theme and replaces colours in the format REAPER
+--       actually parses (32-bit integers, not hex), with every key verified
+--       against a published theme. It refuses to edit a zipped theme instead of
+--       writing something that loads and looks broken. Contrast is measured and
+--       reported rather than "optimised" by a branch that could never run.
+--     + Licence: every script now carries an explicit @license MIT line. The
+--       repository was already MIT; the individual files did not say so.
+--     + Themes and sharing: relicensing this project cannot make generated
+--       themes shareable, because a .ReaperTheme is mostly inherited content
+--       (the source theme's other colours, fonts and ui_img artwork). What was
+--       done instead: LICENSE-THEMES.md states plainly what you may share;
+--       generated files now carry a provenance header naming the theme they came
+--       from and saying the inherited parts keep that theme's licence; the
+--       source theme's own ; comments (author credit) are preserved; and CI
+--       fails if any script lacks an @license line.
 --   1.2.0 (2026-11-07)
 --     + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
 --       the same way, plus Utils.fx_normalize() which converts a value in a
@@ -55,7 +76,8 @@ return "SGM Studios Bundle: Essentials"
 --   - SGM_route_mix_bus.lua — Route all tracks through a Mix Bus (dry-run safe)
 --   - SGM_auto_master.lua — One-click mastering chain with REAPER stock plugins
 --   - SGM_FieldyBagToggle.lua — Toggle between Fieldy/Dimebag bass FX chains
---   - SGM_reaper_ultra_hd_smart_tools.lua — 4K-optimized theme with smart tools
+--   - SGM_reaper_ultra_hd_smart_tools.lua — theme colour generator (inherits your
+--     loaded theme, replaces the colours) plus a smart-tool mode reporter
 --   - daw-discovery-analyzer.lua — Profile your REAPER environment
 --   - SGM_Utils.lua — Shared utility library. The bundled scripts load it
 --     automatically when it is installed and fall back to local helpers when it

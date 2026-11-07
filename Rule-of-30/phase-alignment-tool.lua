@@ -1,5 +1,6 @@
 -- @description Align selected DI tracks by cross-correlation (sample-accurate phase alignment for quad-tracked guitars)
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 2.0.0
 -- @changelog
 --   2.0.0 (2026-11-07)

@@ -1,5 +1,6 @@
 -- @description Plugin chain presets for the Rule of 30 session builder (stock REAPER FX, real settings)
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 3.0.0
 -- @changelog
 --   3.0.0 (2026-11-07)

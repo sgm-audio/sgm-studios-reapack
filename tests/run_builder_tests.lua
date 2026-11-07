@@ -1,3 +1,4 @@
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- Integration tests for the Rule of 30 session builder.
 --
 -- These run the *real* script file against the mock host, so they exercise the

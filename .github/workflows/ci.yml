@@ -24,6 +24,20 @@ jobs:
           done < <(git ls-files '*.lua')
           exit $fail
 
+  license-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every script declares its licence
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            if ! grep -q '^-- @license MIT' "$f"; then
+              echo "MISSING @license MIT: $f"; fail=1
+            fi
+          done < <(git ls-files '*.lua')
+          exit $fail
+
   api-check:
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +60,8 @@ jobs:
         run: lua5.4 tests/run_phase_tests.lua
       - name: Run the session-builder / preset suite
         run: lua5.4 tests/run_builder_tests.lua
+      - name: Run the theme-generator suite
+        run: lua5.4 tests/run_theme_tests.lua
 
   index-xml:
     runs-on: ubuntu-latest

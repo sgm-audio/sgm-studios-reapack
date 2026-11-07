@@ -1,5 +1,6 @@
 -- @description SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment
 -- @author Scott Mills
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @version 2.0.0
 -- @metapackage
 -- @changelog

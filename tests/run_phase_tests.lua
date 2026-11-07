@@ -1,3 +1,4 @@
+-- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- Signal-level tests for the phase alignment tool.
 --
 -- These are the tests that matter for this script: instead of asserting that
