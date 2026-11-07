@@ -1,8 +1,12 @@
 -- @description Route all tracks through a Mix Bus, then Mix Bus to Master
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.1.0
 -- @license MIT
 -- @changelog
+--   1.1.0 (2026-11-07)
+--     + Add: uses the shared SGM_Utils library when it is installed (message
+--       output, native track colours) and falls back to local helpers when it
+--       is not, so this still runs as a standalone file.
 --   1.0.1 (2026-11-07)
 --     + Fix: selection is now honoured (previously the "select the tracks to route"
 --       workflow silently routed *every* top-level track)
@@ -55,8 +59,54 @@ local DRY_RUN = false
 local DEBUG = false
 -- END USER SETTINGS -----------------------------------------------------------
 
+-- SGM_Utils (SGM-Essentials bundle) is optional: it is the shared home for
+-- message output and REAPER colour conversion.
+local function bootstrapUtils()
+    local own_dir = ""
+    local ok_ctx, _, script_filename = pcall(reaper.get_action_context)
+    if ok_ctx and type(script_filename) == "string" then
+        own_dir = script_filename:match("^(.*[/\\])") or ""
+    end
+    local resource = reaper.GetResourcePath()
+    local candidates = {
+        own_dir .. "SGM_Utils.lua",
+        resource .. "/Scripts/SGM Studios/SGM-Essentials/SGM_Utils.lua",
+        resource .. "/Scripts/SGM_Scripts/SGM-Essentials/SGM_Utils.lua",
+        "SGM_Utils.lua",
+        "../SGM-Essentials/SGM_Utils.lua",
+    }
+    for _, path in ipairs(candidates) do
+        local chunk = loadfile(path)
+        if chunk then
+            local ok, lib = pcall(chunk)
+            if ok and type(lib) == "table" then
+                if lib.load then
+                    local found = lib.load(own_dir)
+                    if found then return found end
+                end
+                return lib
+            end
+        end
+    end
+    return nil
+end
+
+local Utils = bootstrapUtils()
+
 local function msg(m)
+    if Utils and Utils.msg then return Utils.msg(m) end
     reaper.ShowConsoleMsg(tostring(m) .. "\n")
+end
+
+-- Utils.native_color takes a packed 0xRRGGBB integer; MIX_BUS_COLOR is a
+-- {r, g, b} table, so pack it here rather than changing the setting's shape.
+local function native_color(rgb)
+    local packed = rgb
+    if type(rgb) == "table" then
+        packed = (rgb.r << 16) | (rgb.g << 8) | rgb.b
+    end
+    if Utils and Utils.native_color then return Utils.native_color(packed) end
+    return reaper.ColorToNative(rgb.r, rgb.g, rgb.b) | 0x1000000
 end
 
 local function dbg(m)
@@ -88,8 +138,7 @@ local function createMixBus()
         return nil
     end
     reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", MIX_BUS_NAME, true)
-    local color = reaper.ColorToNative(MIX_BUS_COLOR.r, MIX_BUS_COLOR.g, MIX_BUS_COLOR.b) | 0x1000000
-    reaper.SetTrackColor(tr, color)
+    reaper.SetTrackColor(tr, native_color(MIX_BUS_COLOR))
     return tr
 end
 

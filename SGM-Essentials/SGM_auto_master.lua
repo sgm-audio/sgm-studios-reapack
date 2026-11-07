@@ -1,7 +1,18 @@
 -- @description Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.1.0
 -- @changelog
+--   1.1.0 (2026-11-07)
+--     + Fix: compressor / limiter values were written in engineering units
+--       (-18 dB, 10 ms) into TrackFX_SetParam, which takes a 0..1 normalized
+--       value, so the attack landed nowhere near 10 ms. Values now go through
+--       Utils.fx_normalize(), which reads the plug-in's own formatting back and
+--       is skipped (with a message) if the plug-in cannot be mapped.
+--     + Fix: TrackFX_SetEQParam takes 7 arguments; `isnorm` was omitted, so the
+--       high-pass frequency was passed as if it were normalized.
+--     + Add: uses the shared SGM_Utils library when it is installed (message
+--       output, dB helpers, parameter mapping) and falls back to local helpers
+--       when it is not, so this still runs as a standalone file.
 --   1.0.1 (2026-11-07)
 --     + Fix: stock limiter is "ReaLimit", not "ReaLimiter" (limiter was never inserted)
 --     + Fix: ReaEQ high-pass now uses the documented TrackFX_SetEQParam API instead of
@@ -49,8 +60,60 @@ local COMP_RELEASE = 100   -- compressor release (ms)
 local LIMIT_CEIL = -1.0    -- limiter ceiling (dBTP)
 -- END USER SETTINGS -----------------------------------------------------------
 
+-- SGM_Utils (SGM-Essentials bundle) is optional: it shares message output and
+-- dB helpers between the bundles. Everything below works without it.
+local function bootstrapUtils()
+    local resource = reaper.GetResourcePath()
+    -- Where this script lives: needed to find a sibling copy of the library,
+    -- which is how it is laid out in the repository and in a manual install.
+    local own_dir = ""
+    local ok_ctx, _, script_filename = pcall(reaper.get_action_context)
+    if ok_ctx and type(script_filename) == "string" then
+        own_dir = script_filename:match("^(.*[/\\])") or ""
+    end
+    local candidates = {
+        own_dir .. "SGM_Utils.lua",
+        resource .. "/Scripts/SGM Studios/SGM-Essentials/SGM_Utils.lua",
+        resource .. "/Scripts/SGM_Scripts/SGM-Essentials/SGM_Utils.lua",
+        "SGM_Utils.lua",
+        "../SGM-Essentials/SGM_Utils.lua",
+    }
+    for _, path in ipairs(candidates) do
+        local chunk = loadfile(path)
+        if chunk then
+            local ok, lib = pcall(chunk)
+            if ok and type(lib) == "table" then
+                if lib.load then
+                    local found = lib.load()
+                    if found then return found end
+                end
+                return lib
+            end
+        end
+    end
+    return nil
+end
+
+local Utils = bootstrapUtils()
+
 local function msg(m)
+    if Utils and Utils.msg then return Utils.msg(m) end
     reaper.ShowConsoleMsg(tostring(m) .. "\n")
+end
+
+local function db_to_linear(db)
+    if Utils and Utils.db_to_linear then return Utils.db_to_linear(db) end
+    return 10 ^ (db / 20)
+end
+
+-- Convert an engineering value to the 0..1 position TrackFX_SetParam expects.
+-- Without SGM_Utils there is no safe mapping, so the caller reports the skip
+-- rather than writing a guess into the parameter.
+local function normalize_param(track, fx, idx, engineering)
+    if Utils and Utils.fx_normalize then
+        return Utils.fx_normalize(track, fx, idx, engineering)
+    end
+    return nil
 end
 
 -- Find a plug-in parameter index by (case-insensitive) name fragment.
@@ -66,14 +129,22 @@ local function find_param(track, fx, fragment)
     return nil
 end
 
--- Set a parameter in the plug-in's own (denormalized) units.
+-- Set a parameter from an engineering value ("10 ms", "-18 dB").
+-- TrackFX_SetParam takes 0..1, so the value is converted against the plug-in's
+-- own formatting; if that is not possible the setting is skipped and reported.
 local function set_param_real(track, fx, fragment, value)
     local idx = find_param(track, fx, fragment)
-    if idx then
-        reaper.TrackFX_SetParam(track, fx, idx, value)
+    if not idx then
+        msg("  ! Could not find a '" .. fragment .. "' parameter")
+        return false
+    end
+    local normalized = normalize_param(track, fx, idx, value)
+    if normalized then
+        reaper.TrackFX_SetParam(track, fx, idx, normalized)
         return true
     end
-    msg("  ! Could not find a '" .. fragment .. "' parameter")
+    msg(string.format("  ! Could not map %s = %s to a normalized value (skipped)",
+        fragment, tostring(value)))
     return false
 end
 
@@ -118,7 +189,7 @@ local function apply_mastering_chain()
             0,   -- bandidx: first high-pass band
             0,   -- paramtype 0 = frequency
             HPF_FREQ,
-            false) -- isnorm = false -> value is in Hz
+            false) -- isnorm = false -> value is in Hz (7 args: isnorm must be passed)
         reaper.TrackFX_SetEQBandEnabled(master_track, hp_idx, 0, 0, true)
         if ok then
             msg(string.format("  ✓ High Pass Filter (%.0f Hz) added", HPF_FREQ))
@@ -132,11 +203,26 @@ local function apply_mastering_chain()
     -- 2. Bus compressor for glue
     local comp_idx = reaper.TrackFX_AddByName(master_track, "ReaComp", false, -1)
     if comp_idx >= 0 then
-        set_param_real(master_track, comp_idx, "Threshold", COMP_THRESH)
-        set_param_real(master_track, comp_idx, "Ratio", COMP_RATIO)
-        set_param_real(master_track, comp_idx, "Attack", COMP_ATTACK)
-        set_param_real(master_track, comp_idx, "Release", COMP_RELEASE)
-        msg("  ✓ Compressor (Glue) added")
+        local set, total = 0, 0
+        for _, setting in ipairs({
+            { "Threshold", COMP_THRESH }, { "Ratio", COMP_RATIO },
+            { "Attack", COMP_ATTACK }, { "Release", COMP_RELEASE },
+        }) do
+            total = total + 1
+            if set_param_real(master_track, comp_idx, setting[1], setting[2]) then
+                set = set + 1
+            end
+        end
+        -- Say what actually happened. "added" on its own is what made a
+        -- completely unconfigured compressor look like a finished chain.
+        if set == total then
+            msg("  ✓ Compressor (Glue) added and configured")
+        elseif set > 0 then
+            msg(string.format("  ~ Compressor added, %d of %d settings applied",
+                set, total))
+        else
+            msg("  ~ Compressor added but NO settings were applied — set it by hand")
+        end
     else
         msg("  ! ReaComp not available — compression skipped")
     end
@@ -144,8 +230,11 @@ local function apply_mastering_chain()
     -- 3. Brickwall limiter. The stock plug-in is called ReaLimit.
     local limit_idx = reaper.TrackFX_AddByName(master_track, "ReaLimit", false, -1)
     if limit_idx >= 0 then
-        set_param_real(master_track, limit_idx, "Ceiling", LIMIT_CEIL)
-        msg(string.format("  ✓ Limiter (%.1f dB ceiling) added", LIMIT_CEIL))
+        if set_param_real(master_track, limit_idx, "Ceiling", LIMIT_CEIL) then
+            msg(string.format("  ✓ Limiter (%.1f dB ceiling) added and configured", LIMIT_CEIL))
+        else
+            msg(string.format("  ~ Limiter added, ceiling NOT set (wanted %.1f dB) — check it", LIMIT_CEIL))
+        end
     else
         msg("  ! ReaLimit not available — limiting skipped")
     end

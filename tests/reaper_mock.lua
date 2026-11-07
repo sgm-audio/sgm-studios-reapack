@@ -25,6 +25,7 @@ local function new_track(name)
     vol = 1.0,
     pan = 0.0,
     color = nil,
+    items = {},
   }
 end
 
@@ -36,6 +37,24 @@ local FX_PARAMS = {
   ReaLimit = { "Bypass", "Ceiling", "Release", "Gain" },
   ReaGate = { "Bypass", "Threshold" },
   ReaVerbate = { "Bypass", "Wet" },
+}
+
+-- Engineering ranges for the mock plug-ins, used by
+-- TrackFX_FormatParamValueNormalized. "exp" models a frequency/threshold style
+-- control; "lin" is linear.
+local PARAM_RANGES = {
+  ReaComp = {
+    Threshold = { min = -60, max = 12, unit = " dB" },
+    Ratio     = { min = 1, max = 20, unit = ":1" },
+    Attack    = { min = 0, max = 500, unit = " ms" },
+    Release   = { min = 0, max = 1000, unit = " ms" },
+  },
+  ReaLimit = {
+    Ceiling = { min = -12, max = 0, unit = " dB" },
+  },
+  ReaEQ = {
+    ["Band 1 Frequency"] = { min = 20, max = 22000, curve = "exp", unit = " Hz" },
+  },
 }
 
 function mock.new()
@@ -59,6 +78,8 @@ function mock.new()
     _action_section = 0,
     _action_command = 424242,
     _toggle_states = {},
+    _extstate = {},
+    _selected_items = {},
     _toolbar_refreshes = {},
   }
 
@@ -165,11 +186,22 @@ function mock.new()
 
   -- FX -----------------------------------------------------------------
   function r.TrackFX_GetCount(tr) return #tr.fx end
+  -- Mirrors the real semantics from reaper_plugin_functions.h:
+  --   negative instantiate -> always create a new instance
+  --   0                     -> only query the first instance, -1 if absent
+  --   positive              -> add only if one is not already there
+  -- The mock used to insert on instantiate == 0, which made "does this FX
+  -- already exist" checks look like they had added a duplicate.
   function r.TrackFX_AddByName(tr, name, _, instantiate)
+    local existing
+    for i, fx in ipairs(tr.fx) do
+      if fx.name == name then existing = i - 1 break end
+    end
     if instantiate == 0 then
-      for i, fx in ipairs(tr.fx) do
-        if fx.name == name then return i - 1 end
-      end
+      return existing or -1
+    end
+    if (instantiate or 0) > 0 and existing then
+      return existing
     end
     tr.fx[#tr.fx + 1] = { name = name, enabled = true, params = {}, eq = {} }
     return #tr.fx - 1
@@ -197,8 +229,37 @@ function mock.new()
   end
   function r.TrackFX_GetParam() return 0, 0 end
   function r.TrackFX_GetFormattedParamValue() return true, "" end
+
+  -- Cockos-extension style value formatting. Ranges are declared per parameter
+  -- so the tests can prove Utils.fx_normalize() inverts a non-linear mapping,
+  -- which is the whole point: TrackFX_SetParam takes 0..1, not engineering units.
+  function r.TrackFX_FormatParamValueNormalized(tr, i, p, value)
+    local fx = tr.fx[i + 1]
+    if not fx then return false, "" end
+    local ranges = PARAM_RANGES[fx.name]
+    local spec = ranges and ranges[(FX_PARAMS[fx.name] or {})[p + 1]]
+    if not spec then return false, "" end
+    local v
+    if spec.curve == "exp" then
+      v = spec.min * (spec.max / spec.min) ^ value
+    else
+      v = spec.min + (spec.max - spec.min) * value
+    end
+    local unit = spec.unit or ""
+    local text = (math.abs(v) < 10 and string.format("%.2f", v) or string.format("%.1f", v))
+    return true, text .. unit
+  end
   function r.TrackFX_SetParam(tr, i, p, value)
     tr.fx[i + 1].params[p] = value
+    return true
+  end
+  function r.TrackFX_SetParamNormalized(tr, i, p, value)
+    local fx = tr.fx[i + 1]
+    if not fx then error("TrackFX_SetParamNormalized on missing slot " .. tostring(i)) end
+    if value < 0 or value > 1 then
+      error("TrackFX_SetParamNormalized got " .. tostring(value) .. " (must be 0..1)")
+    end
+    fx.params[p] = value
     return true
   end
   function r.TrackFX_GetPresetIndex() return 0, 0 end
@@ -238,24 +299,91 @@ function mock.new()
   function r.GetNumAudioInputs() return 2 end
   function r.GetNumAudioOutputs() return 2 end
 
-  -- items / audio access ------------------------------------------------
-  function r.TakeIsMIDI() return false end
-  function r.GetActiveTake() return nil end
-  function r.GetMediaItemTake_Source() return {} end
-  function r.GetMediaSourceSampleRate() return 48000 end
-  function r.GetMediaSourceNumChannels() return 2 end
-  function r.CreateTakeAudioAccessor() return {} end
+  -- items / takes --------------------------------------------------------
+  -- An item is { position, length, take = { midi, rate, channels, audio } }
+  -- where `audio` is a 1-based table of interleaved samples covering the item.
+  function r.TakeIsMIDI(take) return take and take.midi or false end
+  function r.GetActiveTake(item) return item and item.take or nil end
+  function r.GetMediaItemTake_Source(take) return take or {} end
+  function r.GetMediaSourceSampleRate(source) return source.rate or 0 end
+  function r.GetMediaSourceNumChannels(source) return source.channels or 0 end
+  function r.GetTrackMediaItem(tr, idx) return (tr.items or {})[idx + 1] end
+  function r.CountTrackMediaItems(tr) return #(tr.items or {}) end
+  function r.GetMediaItemInfo_Value(item, key)
+    if key == "D_POSITION" then return item.position or 0
+    elseif key == "D_LENGTH" then return item.length or 0
+    elseif key == "D_VOL" then return 1 end
+    return 0
+  end
+  function r.SetMediaItemInfo_Value(item, key, value)
+    if key == "D_POSITION" then item.position = value end
+    return true
+  end
+  function r.SetMediaItemTakeInfo_Value(take, key, value)
+    take[key] = value
+    return true
+  end
+  function r.GetMediaItemTakeInfo_Value(take, key)
+    if key == "D_PLAYRATE" then return take.playrate or 1.0
+    elseif key == "D_STARTOFFS" then return take.startoffs or 0 end
+    return 0
+  end
+  function r.CountSelectedMediaItems() return #r._selected_items end
+  function r.GetSelectedMediaItem(_, i) return r._selected_items[i + 1] end
+
+  -- audio accessor: maps a timeline position onto the item's sample table
+  function r.CreateTakeAudioAccessor(take)
+    if not take or not take.audio then return nil end
+    return { take = take }
+  end
   function r.DestroyAudioAccessor() end
-  function r.GetAudioAccessorSamples() return 0 end
-  function r.new_array() return { clear = function() end } end
-  function r.GetMediaItemInfo_Value() return 0 end
-  function r.SetMediaItemInfo_Value() return true end
-  function r.CountSelectedMediaItems() return 0 end
-  function r.GetSelectedMediaItem() return nil end
+  function r.GetAudioAccessorStartTime(aa) return aa.take.position or 0 end
+  function r.GetAudioAccessorEndTime(aa)
+    return (aa.take.position or 0) + (aa.take.length or 0)
+  end
+  function r.GetAudioAccessorSamples(aa, rate, channels, starttime, count, buffer)
+    local take = aa.take
+    local audio = take.audio
+    if not audio then return -1 end
+    if rate ~= (take.rate or 48000) then
+      error("mock: GetAudioAccessorSamples rate " .. tostring(rate)
+        .. " does not match the source rate " .. tostring(take.rate))
+    end
+    local rel = starttime - (take.position or 0)
+    local first = math.floor(rel * rate + 0.5)
+    for i = 0, count - 1 do
+      local src = first + i
+      for c = 1, channels do
+        -- audio[] is 1-based and interleaved, like reaper.new_array
+        buffer[i * channels + c] = audio[src * channels + c] or 0
+      end
+    end
+    return 1
+  end
+  function r.new_array(n)
+    -- REAPER's arrays expose bound methods: buffer.clear() is called with no
+    -- arguments, so `clear` must capture the array rather than receive it.
+    local t = { _n = n }
+    for i = 1, n do t[i] = 0 end
+    t.clear = function()
+      for i = 1, n do t[i] = 0 end
+    end
+    return setmetatable(t, { __len = function() return n end })
+  end
+  function r.GetExtState(section, key)
+    local s = r._extstate[section]
+    if s and s[key] ~= nil then return true, s[key] end
+    return false, ""
+  end
+  function r.SetExtState(section, key, value, persist)
+    r._extstate[section] = r._extstate[section] or {}
+    r._extstate[section][key] = value
+  end
   function r.GetMediaItem_Track() return nil end
   function r.GetToggleCommandState() return 0 end
   function r.get_action_context()
-    return "mock.lua", "…/mock.lua", r._action_section, r._action_command, 0, 0
+    local path = r._script_path or "mock.lua"
+    return path, path, r._action_section, r._action_command, 0, 0
   end
   function r.SetToggleCommandState(section, cmd, state)
     r._toggle_states[#r._toggle_states + 1] = { section, cmd, state }
@@ -265,6 +393,37 @@ function mock.new()
   end
 
   return r
+end
+
+-- Build an item whose take contains `audio` (1-based, interleaved).
+-- `offset_frames` shifts the audio inside the item, as if the performance
+-- started later than the item does.
+function mock.make_item(opts)
+  local channels = opts.channels or 1
+  local rate = opts.rate or 48000
+  local frames = #opts.audio // channels
+  return {
+    position = opts.position or 0,
+    length = frames / rate,
+    take = {
+      midi = opts.midi or false,
+      rate = rate,
+      channels = channels,
+      audio = opts.audio,
+      playrate = opts.playrate or 1.0,
+      startoffs = opts.startoffs or 0,
+    },
+  }
+end
+
+-- Test host for scripts that expose their pure-Lua core. Set SGM_TEST_HOST
+-- before running the script; it is filled in by the script itself.
+function mock.with_test_host(r, path)
+  _G.SGM_TEST_HOST = {}
+  local err = mock.run_script(r, path)
+  local host = _G.SGM_TEST_HOST
+  _G.SGM_TEST_HOST = nil
+  return host, err
 end
 
 -- helpers used by the tests ---------------------------------------------
@@ -286,9 +445,20 @@ end
 -- Run a script file with `reaper` bound to the mock, returning an error
 -- string (or nil on success).
 function mock.run_script(r, path)
+  -- get_action_context reports the script's own path inside REAPER; scripts use
+  -- it to find libraries next to themselves, so the mock must report it too.
+  r._script_path = path
   local chunk, load_err = loadfile(path)
   if not chunk then return "load: " .. tostring(load_err) end
 
+  -- Inside REAPER, `reaper` is a genuine global. Putting it only in a sandbox
+  -- _ENV and leaving it out of _G looks identical for a single file, but a
+  -- script that loadfile()s a library gives that library the real _G - so the
+  -- library sees no `reaper` at all. Mirror REAPER: set the global, then
+  -- restore whatever was there before.
+  local had_reaper = rawget(_G, "reaper")
+  local previous = _G.reaper
+  _G.reaper = r
   local env = setmetatable({ reaper = r }, { __index = _G })
   if setfenv then
     setfenv(chunk, env)
@@ -299,6 +469,8 @@ function mock.run_script(r, path)
   end
 
   local ok, err = pcall(chunk)
+  _G.reaper = previous
+  if not had_reaper then _G.reaper = nil end
   if ok then return nil end
   return tostring(err)
 end

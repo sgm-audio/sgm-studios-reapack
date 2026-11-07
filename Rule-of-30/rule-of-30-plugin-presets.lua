@@ -1,505 +1,427 @@
--- @description Plugin chain configuration library for the Rule of 30 heavy metal session builder
+-- @description Plugin chain presets for the Rule of 30 session builder (stock REAPER FX, real settings)
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 3.0.0
 -- @changelog
+--   3.0.0 (2026-11-07)
+--     + Fix: values are no longer hand-guessed normalized numbers. Each setting
+--       is written in the units the plug-in itself shows (-18 dB, 10 ms, 3.5 kHz)
+--       and converted at apply time by Utils.fx_normalize(), which reads the
+--       plug-in's own formatting back to find the matching 0..1 position. The
+--       old table paired 0.55 with "-18 dB" and hoped; the real position is 0.58
+--       and a guessed 0.55 is a different threshold.
+--     + Add: ReaEQ settings go through TrackFX_SetEQParam (band type / band index
+--       / freq / gain / Q), because ReaEQ's raw parameter list is not laid out as
+--       band/freq/gain and does not expose those as searchable parameters.
+--     + Add: Presets.apply() - the chain application logic lives next to the data
+--       it validates, and reports values it could not set instead of skipping
+--       them silently.
+--     + Change: `wet` is the one setting written as a normalized value, because
+--       a wet/dry mix has no unit to convert.
+--   2.0.0 (2026-11-07)
+--     + Rewrite: this file was a list of Waves / iZotope / FabFilter / Neural DSP
+--       plugin *names* that the session builder never read. It is now a set of
+--       concrete stock-FX presets (ReaEQ / ReaComp / ReaGate / ReaVerbate /
+--       ReaDelay) that the builder applies.
+--     + Chain keys match the track names the builder actually creates
+--       ("Kick In (Click)", "Bass DI (Lows <200Hz)", "Lead Vocal", ...).
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: localize helper functions (no global leaks)
 --   1.0.0 (2026-05-23)
 --     + Initial release
---     + Plugin chains for Waves, iZotope, FabFilter, Neural DSP, Soundtoys
---     + Per-instrument preset tables: kick, snare, guitars, bass, vocals
 -- @noindex
 -- @about
 --   ## Rule of 30 Plugin Presets
---   Configuration library required by rule-of-30-session-builder.lua.
---   Not intended to be run standalone. Listed as [nomain] in the session
---   builder's @provides manifest.
--- RULE OF 30 - PLUGIN PRESET CONFIGURATIONS
--- Professional Plugin Chains for Heavy Industrial Production
--- Maps specific Waves, iZotope, FabFilter, Neural DSP, Soundtoys plugins
--- Version 1.0
+--   Stock-FX starting points for the Rule of 30 session builder.
+--   Not runnable on its own: `rule-of-30-session-builder.lua` loads it from the
+--   same folder. Each entry is { plugin, params, note } where `params` maps a
+--   plug-in parameter NAME to a value in that parameter's own units.
 
 -- ===================================
--- PLUGIN DATABASE
+-- HOW VALUES ARE EXPRESSED
 -- ===================================
+-- Written in the units the plug-in displays, and converted at apply time:
+--
+--   key("ReaComp", { threshold = -18, ratio = 3, attack = 10, release = 120 },
+--       "glue")
+--
+-- Utils.fx_normalize() asks the plug-in what it shows at position 0 and 1, then
+-- bisects to the requested value, so the setting lands where it says it does
+-- without anyone hand-mapping the range. If a plug-in refuses to format the
+-- value (many third-party plug-ins do), Presets.apply() reports it and moves on
+-- rather than writing a guess.
+--
+-- `wet` is normalized 0..1 on purpose: a wet/dry mix has no unit.
+-- ReaEQ is different again - its bands are not exposed as searchable raw
+-- parameters, so eq() drives TrackFX_SetEQParam with a band type instead.
 
-local PLUGIN_CHAINS = {
+local Presets = {}
 
-  -- ===================================
-  -- I. DRUM BUS CHAINS
-  -- ===================================
+-- Shortcut for "one FX, a few parameters in the plug-in's own units".
+local function fx(plugin, params, note)
+  return { plugin = plugin, params = params or {}, note = note }
+end
 
-  drums = {
-    kick_in = {
-      name = "Kick In (Click/Attack)",
-      chain = {
-        {plugin = "VST3: Waves SSL E-Channel (Waves)", params = "Gate hard, boost 4kHz"},
-        {plugin = "VST3: Smack Attack (Waves)", params = "Max transient attack"},
-      },
-      notes = "High-pass to isolate the click, gate to remove bleed"
+-- A ReaEQ band. bandtype follows TrackFX_SetEQParam:
+--   0 = high-pass, 1 = low shelf, 2 = band, 4 = high shelf, 5 = low-pass.
+local EQ_BANDS = { hp = 0, loshelf = 1, band = 2, hishelf = 4, lp = 5 }
+
+local function eq(bandtype, band, freq, gain, q, note)
+  return {
+    plugin = "ReaEQ",
+    eq = {
+      bandtype = EQ_BANDS[bandtype] or bandtype,
+      bandidx = (band or 1) - 1,       -- API is 0-based within the band type
+      freq = freq,
+      gain = gain,
+      q = q,
     },
-
-    kick_out = {
-      name = "Kick Out (Body)",
-      chain = {
-        {plugin = "VST3: Neutron 4 (iZotope)", params = "Sculptor module for low-end fundamental"},
-        {plugin = "VST3: dbx 160 (Waves)", params = "Fast, hard compression"},
-      },
-      notes = "Lock in the 60-80Hz fundamental, compress for weight"
-    },
-
-    kick_sub = {
-      name = "Kick Sub (Sine Trigger)",
-      chain = {
-        {plugin = "VST3: Submarine (Waves)", params = "45Hz sub-octave synthesis"},
-      },
-      notes = "Pure 45Hz sine wave to rattle ribcages"
-    },
-
-    snare_top = {
-      name = "Snare Top",
-      chain = {
-        {plugin = "VST3: CLA-76 Bluey (Waves)", params = "All buttons in mode"},
-        {plugin = "VST3: Trash 2 (iZotope)", params = "Convolve module with metallic IR"},
-      },
-      notes = "Aggressive parallel compression + metallic saturation"
-    },
-
-    snare_bottom = {
-      name = "Snare Bottom",
-      chain = {
-        {plugin = "VST3: H-EQ (Waves)", params = "Aggressive HPF to isolate wires"},
-      },
-      notes = "Just the rattle of the wires"
-    },
-
-    glitch_snare = {
-      name = "Glitch Snare (Duplicate)",
-      chain = {
-        {plugin = "VST3: Stutter Edit 2 (iZotope)", params = "MIDI-triggered rapid-fire fills"},
-      },
-      notes = "Route MIDI to this track for stutter effects"
-    },
-
-    toms = {
-      name = "Toms (Rack/Floor)",
-      chain = {
-        {plugin = "VST3: API 2500 (Waves)", params = "Link channels for cohesive image"},
-      },
-      notes = "Glue the toms together in stereo"
-    },
-
-    overheads = {
-      name = "Overheads",
-      chain = {
-        {plugin = "VST3: Abbey Road TG Mastering Chain (Waves)", params = "Spread + Limiter"},
-      },
-      notes = "Crush the room tone, widen the image"
-    },
-
-    room_mono = {
-      name = "Room Mono (Crushed)",
-      chain = {
-        {plugin = "VST3: Decapitator (Soundtoys)", params = "Punish button ON"},
-        {plugin = "VST3: MDMX (Waves)", params = "Fuzz setting", optional = true},
-      },
-      notes = "Parallel compress to death for energy"
-    }
-  },
-
-  -- ===================================
-  -- II. BASS ENGINE (3-Band Split)
-  -- ===================================
-
-  bass = {
-    bass_di = {
-      name = "Bass DI (The Lows)",
-      chain = {
-        {plugin = "VST3: MaxxBass (Waves)", params = "Extend low-end perception"},
-        {plugin = "VST3: Pro-Q 3 (FabFilter)", params = "Low pass at 200Hz"},
-        {plugin = "VST3: C6 Multiband (Waves)", params = "Sidechain low band to Kick"},
-      },
-      notes = "Pure low-end, ducking when kick hits"
-    },
-
-    bass_amp = {
-      name = "Bass Amp (The Mids)",
-      chain = {
-        {plugin = "VST3: Darkglass Ultra (Neural DSP)", params = "Heavy bass amp"},
-        {plugin = "VST3: GTR3 (Waves)", params = "Alternative if no Neural DSP", optional = true},
-        {plugin = "VST3: Neutron 4 (iZotope)", params = "Exciter module 400-800Hz"},
-      },
-      notes = "High-pass at 200Hz, add grit and presence"
-    },
-
-    bass_fuzz = {
-      name = "Bass Fuzz (The Highs)",
-      chain = {
-        {plugin = "VST3: Trash 2 (iZotope)", params = "Multiband distortion 2kHz+ sizzle"},
-        {plugin = "VST3: Doubler (Waves)", params = "Subtle width"},
-      },
-      notes = "High-pass at 200Hz, add distorted highs for definition"
-    },
-
-    bass_synth = {
-      name = "Bass Synth Layer",
-      chain = {
-        {plugin = "VST3: Element (Waves)", params = "Saw wave on root notes"},
-        {plugin = "VST3: Serum (Xfer)", params = "Alternative synth", optional = true},
-        {plugin = "VST3: MetaFlanger (Waves)", params = "Slow rate for movement"},
-      },
-      notes = "Simple saw wave following the bass line"
-    }
-  },
-
-  -- ===================================
-  -- III. GUITAR WALL OF SOUND
-  -- ===================================
-
-  guitars = {
-    rhythm_main = {
-      name = "Rhythm Guitars L/R (100%)",
-      chain = {
-        {plugin = "VST3: Archetype Gojira (Neural DSP)", params = "Heavy amp setting"},
-        {plugin = "VST3: SSL G-Channel (Waves)", params = "Cut 400Hz mud"},
-      },
-      notes = "Main rhythm tone - hard panned L/R"
-    },
-
-    rhythm_secondary = {
-      name = "Rhythm Guitars L2/R2 (80%)",
-      chain = {
-        {plugin = "VST3: Archetype Gojira (Neural DSP)", params = "Different cab IR"},
-        {plugin = "VST3: CLA-3A (Waves)", params = "Optical compression"},
-      },
-      notes = "Secondary rhythm layer with different tone"
-    },
-
-    texture_leads = {
-      name = "Octave Leads",
-      chain = {
-        {plugin = "VST3: H-Delay (Waves)", params = "Ping-pong 1/8 dot"},
-        {plugin = "VST3: Valhalla Shimmer", params = "Pitch-shifted reverb"},
-      },
-      notes = "High melody lines with delay/reverb"
-    },
-
-    texture_talking = {
-      name = "Texture Guitars (Talking)",
-      chain = {
-        {plugin = "VST3: VocalSynth 2 (iZotope)", params = "Biovox module for talking guitar"},
-      },
-      notes = "Run guitar through vocal synth for growling texture"
-    },
-
-    scrape = {
-      name = "The Scrape",
-      chain = {
-        {plugin = "VST3: Berzerk Distortion (Waves)", params = "Go crazy"},
-      },
-      notes = "Pick scrapes and feedback noises only"
-    }
-  },
-
-  -- ===================================
-  -- IV. INDUSTRIAL GLITCH & ATMOSPHERE
-  -- ===================================
-
-  glitch = {
-    data_stream = {
-      name = "Data Stream Bus",
-      chain = {
-        {plugin = "VST3: Iris 2 (iZotope)", params = "Spectral synth with modem/HDD clicks"},
-      },
-      notes = "Load samples of dial-up modems and hard drive sounds"
-    },
-
-    impacts = {
-      name = "Impacts/Boom",
-      chain = {
-        {plugin = "VST3: Bass Slapper (Waves)", params = "As percussion"},
-        {plugin = "VST3: R-Bass (Waves)", params = "Sub-bass enhancement"},
-      },
-      notes = "Hit on the 'One' of every chorus"
-    },
-
-    risers = {
-      name = "White Noise Risers",
-      chain = {
-        {plugin = "VST3: Doppler (Waves)", params = "Automate pitch and pan"},
-      },
-      notes = "Transition effects between sections"
-    },
-
-    glitch_master = {
-      name = "Glitch Bus Master",
-      chain = {
-        {plugin = "VST3: Stutter Edit 2 (iZotope)", params = "Play live via MIDI"},
-      },
-      notes = "Route all FX to this bus, play glitches during breakdown"
-    }
-  },
-
-  -- ===================================
-  -- V. VOCAL CHAINS (Dual-Layer)
-  -- ===================================
-
-  vocals = {
-    lead_core = {
-      name = "Lead Vocal (Core)",
-      chain = {
-        {plugin = "VST3: Nectar 4 (iZotope)", params = "Pitch correction + de-essing"},
-        {plugin = "VST3: CLA Vocals (Waves)", params = "Rock setting"},
-        {plugin = "VST3: Saturn 2 (FabFilter)", params = "Warm tube saturation"},
-      },
-      notes = "Intelligible main vocal"
-    },
-
-    lead_tuned = {
-      name = "Lead Vocal (Hard-Tuned)",
-      chain = {
-        {plugin = "VST3: Waves Tune Real-Time (Waves)", params = "Speed 0.1ms, instant snap to Bb Minor"},
-      },
-      notes = "Use this for robotic vocal sound"
-    },
-
-    demon_layer = {
-      name = "Demon Layer",
-      chain = {
-        {plugin = "VST3: Ovox (Waves)", params = "Pitch -12 semitones, lock to scale"},
-      },
-      notes = "Mix under lead at -8dB to -10dB"
-    },
-
-    telephonic = {
-      name = "Telephonic Layer",
-      chain = {
-        {plugin = "VST3: Q10 (Waves)", params = "Band-pass 500Hz-3kHz"},
-        {plugin = "VST3: Trash 2 (iZotope)", params = "Bitcrush + sample rate reduction"},
-      },
-      notes = "Corrupted digital sound"
-    },
-
-    whispers = {
-      name = "Whisper Tracks L/R",
-      chain = {
-        {plugin = "VST3: Brauer Motion (Waves)", params = "Auto-pan around head"},
-        {plugin = "VST3: Renaissance DeEsser (Waves)", params = "Heavy de-essing"},
-      },
-      notes = "ASMR-style whispers hard panned"
-    },
-
-    scream_throw = {
-      name = "Scream Throw",
-      chain = {
-        {plugin = "VST3: EchoBoy (Soundtoys)", params = "Automation: unmute send on last word"},
-        {plugin = "VST3: H-Delay (Waves)", params = "Alternative delay", optional = true},
-      },
-      notes = "Delay send automated for echo throws"
-    }
-  },
-
-  -- ===================================
-  -- VI. MASTER BUS
-  -- ===================================
-
-  master = {
-    bus_comp = {
-      name = "SSL Bus Compressor",
-      chain = {
-        {plugin = "VST3: SSL G-Master Buss Compressor (Waves)", params = "Slow attack, auto release, 4:1, 2-3dB GR"},
-      },
-      notes = "Glue the mix together"
-    },
-
-    tape = {
-      name = "Tape Saturation",
-      chain = {
-        {plugin = "VST3: J37 Tape (Waves)", params = "Adds glue and warmth"},
-      },
-      notes = "Softens digital harshness"
-    },
-
-    mastering = {
-      name = "Mastering Chain",
-      chain = {
-        {plugin = "VST3: Ozone 11 Advanced (iZotope)", params = "Stabilizer + Impact modules"},
-        {plugin = "VST3: Pro-L 2 (FabFilter)", params = "Modern mode limiter"},
-      },
-      notes = "Final polish and loudness"
-    }
+    note = note,
   }
+end
+
+Presets.chains = {
+
+  -- ===============================
+  -- DRUMS
+  -- ===============================
+  ["Kick In (Click)"] = {
+    fx("ReaGate", { threshold = -30, attack = 1, release = 80 },
+      "gate the bleed out of the beater mic"),
+    eq("band", 1, 3500, 3, nil, "presence, by ear"),
+  },
+
+  ["Kick Out (Body)"] = {
+    eq("hp", 1, 40, nil, nil, "high-pass: leave the sub to Kick Sub"),
+    fx("ReaComp", { threshold = -18, ratio = 6, attack = 5, release = 120 },
+      "fast, hard compression for weight"),
+  },
+
+  ["Kick Sub (40-60Hz)"] = {
+    eq("hp", 1, 30, nil, nil, "isolate the fundamental"),
+  },
+
+  ["Snare Top"] = {
+    eq("band", 1, 4000, 3, nil, "crack"),
+    fx("ReaComp", { threshold = -20, ratio = 4, attack = 10, release = 150 },
+      "glue the crack"),
+  },
+
+  ["Snare Bottom"] = {
+    eq("band", 1, 3000, 0, nil, "snare-wire range, flat to start"),
+    fx("ReaGate", { threshold = -24, attack = 1, release = 60 },
+      "keep the hats out"),
+  },
+
+  ["Glitch Snare (Duplicate)"] = {
+    fx("ReaComp", { threshold = -35, ratio = 20 },
+      "deliberately crushed parallel-style trigger"),
+  },
+
+  ["OH Left"] = { eq("hp", 1, 300, nil, nil, "cymbals only") },
+  ["OH Right"] = { eq("hp", 1, 300, nil, nil, "cymbals only") },
+
+  ["Room Mono (Crushed)"] = {
+    fx("ReaComp", { threshold = -40, ratio = 20, attack = 30, release = 200 },
+      "smash it for room character"),
+  },
+
+  ["Tom Rack"] = { eq("hp", 1, 60, nil, nil, "start flat: tune before processing") },
+  ["Tom Floor"] = { eq("hp", 1, 40, nil, nil, "start flat: tune before processing") },
+
+  -- ===============================
+  -- BASS
+  -- ===============================
+  ["Bass DI (Lows <200Hz)"] = {
+    eq("lp", 1, 200, nil, nil, "this track owns the lows"),
+    fx("ReaComp", { threshold = -18, ratio = 4, attack = 5, release = 120 },
+      "level control; sidechain input comes from the kick"),
+  },
+
+  ["Bass Amp (Mids 200-2k)"] = {
+    eq("hp", 1, 200, nil, nil, "high-pass out of the kick's way"),
+  },
+
+  ["Bass Fuzz (Highs >2k)"] = {
+    eq("hp", 1, 2000, nil, nil, "fuzz only adds the top"),
+  },
+
+  ["Bass Synth Layer (Sub)"] = {
+    eq("lp", 1, 80, nil, nil, "sub only"),
+  },
+
+  -- ===============================
+  -- GUITARS
+  -- ===============================
+  ["Rhythm L1 (100% L)"] = {
+    eq("hp", 1, 90, nil, nil, "DIs need the mud gone before the amp sim"),
+  },
+  ["Rhythm R1 (100% R)"] = {
+    eq("hp", 1, 90, nil, nil, "as left"),
+  },
+  ["Rhythm L2 (80% L)"] = {
+    eq("hp", 1, 110, nil, nil, "slightly higher so the second pair sits behind the first"),
+  },
+  ["Rhythm R2 (80% R)"] = {
+    eq("hp", 1, 110, nil, nil, "as left"),
+  },
+
+  ["Octave Lead L"] = { eq("band", 1, 2500, 2, nil, "cut through") },
+  ["Octave Lead R"] = { eq("band", 1, 2500, 2, nil, "cut through") },
+  ["The Scrape (FX)"] = { eq("hp", 1, 200, nil, nil, "sound design: process to taste") },
+  ["Clean Ambient (Wet)"] = {
+    fx("ReaVerbate", { wet = 0.55, room_size = 0.70 }, "long ambient wash"),
+  },
+
+  -- ===============================
+  -- GLITCH / ATMOSPHERE
+  -- ===============================
+  ["White Noise Risers"] = {
+    eq("bp", 1, 1000, nil, nil, "band-limit the noise"),
+  },
+  ["Impact Booms"] = {
+    fx("ReaComp", { threshold = -25, ratio = 8 }, "tame the peaks"),
+  },
+  ["Digital Artifacts"] = { eq("hp", 1, 200, nil, nil, "sound design") },
+  ["Dark Pad (Minor)"] = {
+    fx("ReaVerbate", { wet = 0.45, room_size = 0.80 }, "space"),
+  },
+  ["Arpeggiator"] = { fx("ReaDelay", { wet = 0.30 }, "rhythmic echo") },
+  ["Reverse Piano"] = {
+    fx("ReaVerbate", { wet = 0.50, room_size = 0.75 }, "space"),
+  },
+
+  -- ===============================
+  -- VOCALS
+  -- ===============================
+  ["Lead Vocal"] = {
+    eq("hp", 1, 100, nil, nil, "clean up the low end"),
+    fx("ReaComp", { threshold = -20, ratio = 3, attack = 10, release = 150 },
+      "3:1, gentle"),
+  },
+  ["Double Vocal"] = {
+    fx("ReaComp", { threshold = -22, ratio = 2.5 }, "subordinate to the lead"),
+  },
+  ["Demon Layer (-12st)"] = {
+    eq("hp", 1, 150, nil, nil, "dark and narrow"),
+  },
+  ["Telephonic (500-3k BP)"] = {
+    eq("bp", 1, 1500, nil, nil, "band-pass: this is the effect, tune both edges by ear"),
+  },
+  ["Whisper L (ASMR)"] = {
+    eq("hp", 1, 150, nil, nil, "remove the rumble"),
+  },
+  ["Whisper R (ASMR)"] = {
+    eq("hp", 1, 150, nil, nil, "remove the rumble"),
+  },
+  ["Scream High L"] = {
+    fx("ReaComp", { threshold = -24, ratio = 10 }, "hold the scream down"),
+  },
+  ["Scream High R"] = {
+    fx("ReaComp", { threshold = -24, ratio = 10 }, "hold the scream down"),
+  },
+  ["Growl Center"] = {
+    eq("hp", 1, 120, nil, nil, "make room for the lead"),
+  },
+  ["Ad-lib 1"] = { fx("ReaVerbate", { wet = 0.35, room_size = 0.55 }, "throw") },
+  ["Ad-lib 2"] = { fx("ReaVerbate", { wet = 0.35, room_size = 0.55 }, "throw") },
+  ["Ad-lib 3"] = { fx("ReaVerbate", { wet = 0.35, room_size = 0.55 }, "throw") },
+
+  -- ===============================
+  -- SEND FX BUSES
+  -- ===============================
+  ["Hall Reverb"] = {
+    fx("ReaVerbate", { wet = 1.0, room_size = 0.90 }, "100% wet: it is a bus"),
+  },
+  ["Plate Reverb"] = {
+    fx("ReaVerbate", { wet = 1.0, room_size = 0.55 }, "100% wet"),
+  },
+  ["1/4 Note Delay"] = {
+    fx("ReaDelay", { wet = 1.0 }, "100% wet; set the time to 1/4"),
+  },
+  ["1/8 Dotted Delay"] = {
+    fx("ReaDelay", { wet = 1.0 }, "100% wet; set the time to 1/8 dotted"),
+  },
+  ["Parallel Drum Crush"] = {
+    fx("ReaComp", { threshold = -50, ratio = 20 }, "heavily crushed"),
+  },
 }
 
 -- ===================================
--- SEND FX CONFIGURATIONS
+-- APPLYING A CHAIN
 -- ===================================
+-- `addFx(track, plugin)` is injected by the caller so this file never has to
+-- know how the builder instantiates plug-ins. It must return (fx_index, added).
+--
+-- Returns added, skipped, problems:
+--   added    number of plug-ins actually inserted
+--   skipped  list of plug-in names the track already had
+--   problems list of human-readable strings for anything that did not resolve
+function Presets.apply(track, label, chain, addFx)
+  local added, skipped, problems = 0, {}, {}
+  if not chain then return added, skipped, problems end
 
-local SEND_FX_CHAINS = {
-  reverb_hall = {
-    name = "Hall Reverb",
-    chain = {
-      {plugin = "VST3: H-Reverb (Waves)", params = "Hall preset, pre-delay 30ms"},
-      {plugin = "ReaEQ", params = "HPF 200Hz, LPF 8kHz"},
-    },
-    notes = "Main reverb send for vocals/leads"
-  },
-
-  reverb_plate = {
-    name = "Plate Reverb",
-    chain = {
-      {plugin = "VST3: Abbey Road Plates (Waves)", params = "Plate setting, decay 2.0s"},
-    },
-    notes = "Snare reverb"
-  },
-
-  delay_quarter = {
-    name = "1/4 Note Delay",
-    chain = {
-      {plugin = "VST3: H-Delay (Waves)", params = "1/4 note, 35% feedback"},
-    },
-    notes = "Rhythmic delay for vocals"
-  },
-
-  delay_dotted = {
-    name = "1/8 Dotted Delay",
-    chain = {
-      {plugin = "VST3: EchoBoy (Soundtoys)", params = "1/8 dot, ping-pong"},
-      {plugin = "VST3: H-Delay (Waves)", params = "Alternative", optional = true},
-    },
-    notes = "Dotted eighth delay for leads"
-  },
-
-  parallel_crush = {
-    name = "Parallel Drum Crush",
-    chain = {
-      {plugin = "VST3: CLA-76 (Waves)", params = "All buttons in, ratio 20:1"},
-      {plugin = "ReaEQ", params = "Boost 100Hz +3dB, boost 10kHz +4dB"},
-    },
-    notes = "Parallel compression for drums (blend 30%)"
-  }
-}
-
--- ===================================
--- PLUGIN SEARCH PATTERNS
--- ===================================
-
-local PLUGIN_SEARCH = {
-  -- Waves plugins (try multiple formats)
-  waves = {
-    "VST3: %s (Waves)",
-    "VST: Waves %s",
-    "VSTi: Waves %s",
-  },
-
-  -- iZotope plugins
-  izotope = {
-    "VST3: %s (iZotope)",
-    "VST: iZotope %s",
-  },
-
-  -- FabFilter plugins
-  fabfilter = {
-    "VST3: %s (FabFilter)",
-    "VST: FabFilter %s",
-  },
-
-  -- Neural DSP plugins
-  neuraldsp = {
-    "VST3: %s (Neural DSP)",
-    "VST: Neural DSP %s",
-  },
-
-  -- Soundtoys plugins
-  soundtoys = {
-    "VST3: %s (Soundtoys)",
-    "VST: Soundtoys %s",
-  }
-}
-
--- ===================================
--- HELPER FUNCTIONS
--- ===================================
-
-local function findPlugin(track, plugin_name)
-  -- Try to find plugin by name (case-insensitive)
-  local fx_count = reaper.TrackFX_GetCount(track)
-
-  for i = 0, fx_count - 1 do
-    local _, fx_name = reaper.TrackFX_GetFXName(track, i, "")
-    if fx_name:lower():find(plugin_name:lower()) then
-      return i
+  for _, entry in ipairs(chain) do
+    local fx_index, was_added = addFx(track, entry.plugin)
+    if not fx_index then
+      problems[#problems + 1] =
+        string.format("%s: %s not available", label, entry.plugin)
+    elseif not was_added then
+      skipped[#skipped + 1] = entry.plugin
+    else
+      added = added + 1
+      if entry.eq then
+        local written, err = Presets.applyEq(track, fx_index, entry.eq)
+        if not written then
+          problems[#problems + 1] =
+            string.format("%s: %s band not set (%s)", label, entry.plugin,
+              tostring(err))
+        end
+      end
+      for param_name, wanted in pairs(entry.params or {}) do
+        local written, err = Presets.applyParam(track, fx_index, param_name, wanted)
+        if not written then
+          problems[#problems + 1] =
+            string.format("%s: %s %s (%s)", label, entry.plugin, param_name,
+              tostring(err))
+        end
+      end
     end
   end
-
-  return nil
+  return added, skipped, problems
 end
 
-local function getChainForTrack(track_name)
-  -- Match track name to plugin chain configuration
+-- Map friendly parameter keys to the name fragment the plug-in uses. Stock
+-- REAPER plug-ins spell these out; the mapping keeps the tables readable.
+local PARAM_ALIASES = {
+  threshold = "Threshold",
+  ratio = "Ratio",
+  attack = "Attack",
+  release = "Release",
+  knee = "Knee",
+  room_size = "Room Size",
+  ceiling = "Ceiling",
+  wet = "Wet",
+}
 
-  -- Drums
-  if track_name:find("Kick In") then
-    return PLUGIN_CHAINS.drums.kick_in
-  elseif track_name:find("Kick Out") then
-    return PLUGIN_CHAINS.drums.kick_out
-  elseif track_name:find("Kick Sub") then
-    return PLUGIN_CHAINS.drums.kick_sub
-  elseif track_name:find("Snare Top") then
-    return PLUGIN_CHAINS.drums.snare_top
-  elseif track_name:find("Snare Bottom") then
-    return PLUGIN_CHAINS.drums.snare_bottom
-  elseif track_name:find("Glitch Snare") then
-    return PLUGIN_CHAINS.drums.glitch_snare
-  elseif track_name:find("Tom") then
-    return PLUGIN_CHAINS.drums.toms
-  elseif track_name:find("OH") or track_name:find("Overhead") then
-    return PLUGIN_CHAINS.drums.overheads
-  elseif track_name:find("Room Mono") then
-    return PLUGIN_CHAINS.drums.room_mono
+function Presets.paramName(key)
+  return PARAM_ALIASES[key] or key
+end
 
-  -- Bass
-  elseif track_name:find("Bass DI") then
-    return PLUGIN_CHAINS.bass.bass_di
-  elseif track_name:find("Bass Amp") then
-    return PLUGIN_CHAINS.bass.bass_amp
-  elseif track_name:find("Bass Fuzz") then
-    return PLUGIN_CHAINS.bass.bass_fuzz
-  elseif track_name:find("Bass Synth") then
-    return PLUGIN_CHAINS.bass.bass_synth
-
-  -- Guitars
-  elseif track_name:find("Rhythm L1") or track_name:find("Rhythm R1") then
-    return PLUGIN_CHAINS.guitars.rhythm_main
-  elseif track_name:find("Rhythm L2") or track_name:find("Rhythm R2") then
-    return PLUGIN_CHAINS.guitars.rhythm_secondary
-  elseif track_name:find("Octave Lead") then
-    return PLUGIN_CHAINS.guitars.texture_leads
-  elseif track_name:find("Scrape") then
-    return PLUGIN_CHAINS.guitars.scrape
-
-  -- Vocals
-  elseif track_name:find("Lead Vocal") then
-    return PLUGIN_CHAINS.vocals.lead_core
-  elseif track_name:find("Demon Layer") then
-    return PLUGIN_CHAINS.vocals.demon_layer
-  elseif track_name:find("Telephonic") then
-    return PLUGIN_CHAINS.vocals.telephonic
-  elseif track_name:find("Whisper") then
-    return PLUGIN_CHAINS.vocals.whispers
+-- Write one parameter. `wet` is a plain 0..1 mix; everything else is in the
+-- plug-in's own units and has to be converted, or not written at all.
+function Presets.applyParam(track, fx_index, key, wanted)
+  if key == "wet" then
+    if type(wanted) ~= "number" then return false, "not a number" end
+    local idx = Presets.resolveParam(track, fx_index, "Wet")
+    if not idx then return false, "no Wet parameter" end
+    reaper.TrackFX_SetParamNormalized(track, fx_index, idx,
+      math.max(0, math.min(1, wanted)))
+    return true
   end
 
-  return nil
+  local name = Presets.paramName(key)
+  local idx = Presets.resolveParam(track, fx_index, name)
+  if not idx then return false, "parameter not found" end
+
+  local Utils = Presets.Utils
+  if not (Utils and Utils.fx_normalize) then
+    return false, "SGM_Utils.fx_normalize unavailable"
+  end
+  local normalized = Utils.fx_normalize(track, fx_index, idx, wanted)
+  if not normalized then
+    return false, "plug-in would not format this parameter"
+  end
+  reaper.TrackFX_SetParamNormalized(track, fx_index, idx, normalized)
+  return true
 end
 
--- ===================================
--- EXPORT
--- ===================================
+-- ReaEQ bands are not searchable raw parameters; the dedicated API is the
+-- documented way to touch them.
+function Presets.applyEq(track, fx_index, band)
+  local ok = reaper.TrackFX_SetEQBandEnabled(track, fx_index,
+    band.bandtype, band.bandidx, true)
+  if ok == false then return false, "not a ReaEQ instance" end
+  if band.freq then
+    reaper.TrackFX_SetEQParam(track, fx_index, band.bandtype, band.bandidx, 0, band.freq, false)
+  end
+  if band.gain then
+    reaper.TrackFX_SetEQParam(track, fx_index, band.bandtype, band.bandidx, 1, band.gain, false)
+  end
+  if band.q then
+    reaper.TrackFX_SetEQParam(track, fx_index, band.bandtype, band.bandidx, 2, band.q, false)
+  end
+  return true
+end
 
-return {
-  chains = PLUGIN_CHAINS,
-  send_fx = SEND_FX_CHAINS,
-  search = PLUGIN_SEARCH,
-  getChainForTrack = getChainForTrack,
-  findPlugin = findPlugin
+-- Set by the loader (session builder) so this file can map parameter values
+-- through the shared library when it is installed.
+Presets.Utils = Presets.Utils
+
+-- Parameter lookup.
+--
+-- The names above are how the parameters appear in REAPER's UI, but only some of
+-- them are searchable: ReaEQ's individual band parameters are exposed as
+-- "Band 2 Frequency" style names, while stock ReaComp parameters are simply
+-- "Threshold", "Ratio", "Attack", "Release". Rather than trust either, the
+-- builder resolves every name against the live parameter list with
+-- TrackFX_GetParamName() and reports what it could not find.
+function Presets.resolveParam(track, fx_index, wanted)
+  local target = tostring(wanted):lower()
+  for i = 0, reaper.TrackFX_GetNumParams(track, fx_index) - 1 do
+    local _, name = reaper.TrackFX_GetParamName(track, fx_index, i, "")
+    if name and name:lower():find(target, 1, true) then
+      return i, name
+    end
+  end
+  return nil, nil
+end
+
+-- Bus-level chains, applied by role rather than by track name.
+Presets.buses = {
+  master = {
+    fx("ReaComp", { threshold = -14, ratio = 2 }, "2:1 glue"),
+    eq("hp", 1, 30, nil, nil, "final shaping: tame the sub, flat otherwise"),
+    fx("ReaLimit", { ceiling = -1.0 }, "safety limiter at -1 dBTP"),
+  },
 }
+
+-- Keys are matched as substrings of the track name, longest first, so
+-- "Rhythm L1 (100% L)" wins over a bare "Rhythm".
+--
+-- Note the em-dash style names the builder uses ("Rhythm L1 (100% L)") are
+-- matched on the distinctive part only, so a user renaming a track keeps the
+-- preset as long as the instrument name survives.
+function Presets.forTrack(track_name)
+  if not track_name then return nil end
+  local best, best_len = nil, 0
+  for key in pairs(Presets.chains) do
+    if track_name:find(key, 1, true) and #key > best_len then
+      best, best_len = key, #key
+    end
+  end
+  return best and Presets.chains[best] or nil
+end
+
+-- True when the preset exists but the plugins it wants are not installed.
+-- Returned so the builder can say "ReaXcomp not found" instead of silently
+-- building a session that looks processed but is not.
+function Presets.missingPluginsFor(track_name, is_installed)
+  local chain = Presets.forTrack(track_name)
+  if not chain then return {} end
+  local missing = {}
+  for _, entry in ipairs(chain) do
+    if is_installed and not is_installed(entry.plugin) then
+      missing[#missing + 1] = entry.plugin
+    end
+  end
+  return missing
+end
+
+function Presets.list()
+  local names = {}
+  for key in pairs(Presets.chains) do names[#names + 1] = key end
+  table.sort(names)
+  return names
+end
+
+return Presets

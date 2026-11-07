@@ -1,8 +1,18 @@
 -- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
 -- @author Scott Mills
--- @version 1.1.3
+-- @version 1.2.0
 -- @metapackage
 -- @changelog
+--   1.2.0 (2026-11-07)
+--     + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
+--       the same way, plus Utils.fx_normalize() which converts a value in a
+--       plug-in's own units (-18 dB, 10 ms) into the 0..1 value TrackFX_SetParam
+--       actually takes, by reading the plug-in's formatting back.
+--     + SGM_auto_master 1.1.0: compressor and limiter settings now land on the
+--       documented values (they were being written as if normalized), the ReaEQ
+--       high-pass passes its isnorm argument, and the console reports settings it
+--       could not apply instead of claiming the chain is configured.
+--     + SGM_route_mix_bus 1.1.0: uses the shared message and colour helpers.
 --   1.1.3 (2026-11-07)
 --     + daw-discovery-analyzer 1.0.4: no non-existent API calls
 --       (GetProjectSampleRate / GetInputChannelCount / GetOutputChannelCount),
@@ -47,5 +57,6 @@ return "SGM Studios Bundle: Essentials"
 --   - SGM_FieldyBagToggle.lua — Toggle between Fieldy/Dimebag bass FX chains
 --   - SGM_reaper_ultra_hd_smart_tools.lua — 4K-optimized theme with smart tools
 --   - daw-discovery-analyzer.lua — Profile your REAPER environment
---   - SGM_Utils.lua — Shared utility library (available for your own scripts;
---     none of the bundled scripts load it automatically)
+--   - SGM_Utils.lua — Shared utility library. The bundled scripts load it
+--     automatically when it is installed and fall back to local helpers when it
+--     is not, so it is safe to remove.

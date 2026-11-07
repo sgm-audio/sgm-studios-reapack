@@ -29,7 +29,9 @@ Rule-of-30/                   Bundle sources + README / INSTALL / CHANGELOG / TE
 tools/gen_index.py            Regenerates index.xml from the script headers
 tools/check_api.py            Fails on any reaper.* call that is not real
 tools/api_allowlist.json      The real ones (REAPER 7.83 SDK header)
-tests/                        Mock-API regression suite (21 cases, no REAPER needed)
+tests/                        Mock-API suites (66 cases, no REAPER needed):
+                              run_tests.lua (22), run_phase_tests.lua (18),
+                              run_builder_tests.lua (26)
 docs/screenshots/             ReaPack screenshots (see the README there)
 .github/workflows/ci.yml      Syntax + API + tests + index validation
 .reapack-index.conf           reapack-index settings (name, about, amend, links)
@@ -41,7 +43,9 @@ derived from those headers. After editing a header:
 ```sh
 python3 tools/gen_index.py     # rewrite versions, changelogs and sources
 python3 tools/check_api.py     # no phantom reaper.* calls
-lua5.4 tests/run_tests.lua     # 21 regression cases against a mock API
+lua5.4 tests/run_tests.lua           # 22 regression cases against a mock API
+lua5.4 tests/run_phase_tests.lua     # 18 phase-alignment cases (known offsets)
+lua5.4 tests/run_builder_tests.lua   # 26 builder / preset / parameter cases
 ```
 
 CI fails if any of the three disagrees with the repository. Sources in
