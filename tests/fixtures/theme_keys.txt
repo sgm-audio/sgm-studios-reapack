@@ -1,15 +1,24 @@
-# Valid key names in a REAPER .ReaperTheme [color theme] section.
+# Key names that appear in a REAPER .ReaperTheme [color theme] section.
 #
-# Taken from a real, published theme (Flat Madness Dark, gapalil001/FlatMadness,
-# Sources/Flat Madness Dark.ReaperTheme/Flat_madness_Dark_edition_EDIT.ReaperTheme,
-# 359 keys). REAPER silently ignores keys it does not know, so a generator that
-# invents names produces a file that loads but changes nothing. Anything written
-# by tools/gen_theme* or SGM_reaper_ultra_hd_smart_tools.lua must appear here.
+# Names only - no values are reproduced. These are the identifiers REAPER itself
+# writes and parses, observed from published themes and from REAPER's own theme
+# adjuster (Cockos/Default_7.0_theme_adjuster.lua). They are facts about a file
+# format, like a list of INI keys, not creative content.
 #
-# Values in that file are 32-bit signed decimal integers, not hex:
-#   col_cursor=895743   (0x000DAAFF)
-#   col_tl_bg=2302755   (0x00232323)
-#   col_main_bg=-2143207103  (0x80414141 - the high bit is alpha)
+# They were tabulated with the help of a published theme
+# (gapalil001/FlatMadness - GPL-3.0). Nothing from that theme's content is
+# included here or anywhere else in this repository: no colour values, no font
+# blobs, no images, no ui_img name. A key list is not copyrightable subject
+# matter on its own, but the credit belongs here regardless.
+#
+# Why the list exists: REAPER silently ignores keys it does not recognise, so a
+# generator that invents a key name produces a file that loads and changes
+# nothing. tests/run_theme_tests.lua fails if a script writes a key that is not
+# in this list.
+#
+# Values in a real file are 32-bit signed decimal integers, not hex:
+#   col_cursor=895743           0x000DAAFF
+#   col_main_bg=-2143207103     0x80414141   (high bit = alpha)
 activetake_tag
 areasel_drawmode
 areasel_fill

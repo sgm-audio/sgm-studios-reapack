@@ -52,8 +52,9 @@ io.write("colour packing (the bug that made every theme a no-op)\n")
 do
   local host = load_host(mock.new())
 
-  -- REAPER stores 0x00BBGGRR as a signed 32-bit decimal. Checked against a real
-  -- theme: col_cursor=895743 is 0x000DAAFF, i.e. r=255 g=170 b=13.
+  -- REAPER stores a colour as a signed 32-bit decimal in 0xBBGGRR order, so
+  -- r=255 g=170 b=13 packs to 0x000DAAFF = 895743. These are arithmetic
+  -- identities of the file format, not values copied from any theme.
   check("packs BGR order, not RGB",
     host.pack_color({ 255, 170, 13 }) == 895743,
     "got " .. tostring(host.pack_color({ 255, 170, 13 })))
@@ -166,6 +167,15 @@ do
       "applied " .. tostring(info.applied))
     check("kept keys the palette has no opinion about",
       info.total_keys - info.applied > 100)
+
+    -- Sharing: the file has to say where it came from and what is not MIT.
+    local text = table.concat(lines, "\n")
+    check("records which theme it was derived from",
+      text:find("Derived from:", 1, true) ~= nil)
+    check("states that inherited artwork keeps its own licence",
+      text:find("remain under ITS licence", 1, true) ~= nil)
+    check("states that the colour values are MIT",
+      text:find("MIT (c) 2026", 1, true) ~= nil)
   end
 end
 

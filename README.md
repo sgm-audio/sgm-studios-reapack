@@ -94,9 +94,14 @@ the notice above, no share-alike clause, and no restriction on commercial use.
 - **Theme output:** a `.ReaperTheme` file produced by
   `SGM_reaper_ultra_hd_smart_tools.lua` is derived from the theme you had loaded
   at the time. It inherits that theme's images, fonts and remaining colours, so
-  it is a derivative of *that* theme, not of this MIT-licensed code. If you
-  redistribute a generated theme, the source theme's licence applies to it —
-  check it before you share the file.
+  it is a derivative of *that* theme, not of this MIT-licensed code.
+
+  The colour values the script writes are MIT. Everything it carried over is
+  not — and that is the part people get caught by when they share a recolour.
+  **[LICENSE-THEMES.md](LICENSE-THEMES.md)** sets out what you may share, what
+  to carry with it, and the one way to build a theme with no obligations at all
+  (start from REAPER's stock Default theme). Generated files now carry the
+  source theme's name in their header so this is checkable after the fact.
 - **Paid products:** the Suno AI Workflow Suite and Hip-Hop/EDM Session Builder
   listed above are sold separately and are not part of this repository or this
   licence.

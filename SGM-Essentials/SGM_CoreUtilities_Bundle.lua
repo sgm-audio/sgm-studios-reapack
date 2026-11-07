@@ -16,6 +16,14 @@
 --       reported rather than "optimised" by a branch that could never run.
 --     + Licence: every script now carries an explicit @license MIT line. The
 --       repository was already MIT; the individual files did not say so.
+--     + Themes and sharing: relicensing this project cannot make generated
+--       themes shareable, because a .ReaperTheme is mostly inherited content
+--       (the source theme's other colours, fonts and ui_img artwork). What was
+--       done instead: LICENSE-THEMES.md states plainly what you may share;
+--       generated files now carry a provenance header naming the theme they came
+--       from and saying the inherited parts keep that theme's licence; the
+--       source theme's own ; comments (author credit) are preserved; and CI
+--       fails if any script lacks an @license line.
 --   1.2.0 (2026-11-07)
 --     + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
 --       the same way, plus Utils.fx_normalize() which converts a value in a

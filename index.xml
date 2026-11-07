@@ -30,6 +30,14 @@
     reported rather than "optimised" by a branch that could never run.
   + Licence: every script now carries an explicit @license MIT line. The
     repository was already MIT; the individual files did not say so.
+  + Themes and sharing: relicensing this project cannot make generated
+    themes shareable, because a .ReaperTheme is mostly inherited content
+    (the source theme's other colours, fonts and ui_img artwork). What was
+    done instead: LICENSE-THEMES.md states plainly what you may share;
+    generated files now carry a provenance header naming the theme they came
+    from and saying the inherited parts keep that theme's licence; the
+    source theme's own ; comments (author credit) are preserved; and CI
+    fails if any script lacks an @license line.
 1.2.0 (2026-11-07)
   + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
     the same way, plus Utils.fx_normalize() which converts a value in a
@@ -61,13 +69,13 @@
   + Reorganised for ReaPack: kept to the utilities I use day to day
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_route_mix_bus.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_auto_master.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/daw-discovery-analyzer.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_Utils.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_Utils.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
@@ -90,7 +98,7 @@
   + Fix: single selected-track lookup (main() and the toggle shared it)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
@@ -126,7 +134,7 @@
   + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants that the docs always promised
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_auto_master.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-friendly REAPER theme generator with WCAG contrast checking and an optional smart-tool cursor engine">
@@ -202,7 +210,7 @@
   + Top Shelf audit: localize functions, remove _G exports (no global leaks)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
@@ -233,7 +241,7 @@
   + Add: console message when no tracks are selected
 1.0.0 (2026-06-03)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/SGM_route_mix_bus.lua</source>
       </version>
     </reapack>
     <reapack name="daw-discovery-analyzer.lua" type="script" desc="Profile the REAPER environment: plugins, routing graph, track structure, and system specs">
@@ -279,7 +287,7 @@
   + System profiling: CPU, RAM, sample rate, buffer size
   + Plugin discovery and categorization
   + Signal flow graph generation exported to console]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/SGM-Essentials/daw-discovery-analyzer.lua</source>
       </version>
     </reapack>
   </category>
@@ -328,10 +336,10 @@
     phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-plugin-presets.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/phase-alignment-tool.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/phase-alignment-tool.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
@@ -378,7 +386,7 @@
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/phase-alignment-tool.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/phase-alignment-tool.lua</source>
       </version>
     </reapack>
     <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
@@ -435,8 +443,8 @@
   + 48+ track template: quad guitars, double bass, full drum kit, orchestral layers
   + Drop Bb tuning, 95-110 BPM range
   + Bus architecture with parallel compression sends]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/2d7af4b7b5bc691300d90b51625b9a6b2bbdc0fa/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/5e6c8b25f7f988667e68f25555bf1cd99389ace5/Rule-of-30/rule-of-30-plugin-presets.lua</source>
       </version>
     </reapack>
   </category>

@@ -136,6 +136,11 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
 - [x] **DONE.** The builder reports per-track results: `+N FX`, or which plug-ins it
       skipped because the track already had them, or which it could not find.
       Values it could not map are named individually.
+- [ ] Licence/theme sharing: done as far as code can do it — `LICENSE-THEMES.md`,
+      provenance headers in generated files, preserved author comments, and a CI
+      guard that every script declares MIT. The remaining item is not technical:
+      decide whether to keep the "start from the stock theme" advice as the
+      recommended path in the README (currently the second option, not the first).
 - [ ] Still open from this section: confirm in real REAPER that the four chain
       buttons produce the chains the tests describe (the mock cannot prove that a
       plug-in's parameter list matches the parameter names used here).

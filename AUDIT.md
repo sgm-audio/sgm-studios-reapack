@@ -294,11 +294,10 @@ The old writer emitted colours as 6-digit hex strings (`"12243a"`) under a
 `[theme]` section that real theme files do not contain. REAPER parses
 `[color theme]` values with `atoi()` into 32-bit integers:
 
-```
-col_cursor=895743           0x000DAAFF
-col_tl_bg=2302755           0x00232323
-col_main_bg=-2143207103     0x80414141   (high bit = alpha)
-```
+The encoding is 0xRRGGBB little-endian, stored as a signed 32-bit decimal, so
+`r=255, g=170, b=13` becomes `0x000DAAFF` = `895743` and `r=35, g=35, b=35`
+becomes `0x00232323` = `2302755`; the high bit carries alpha, which is why a
+theme's main background can appear as a large negative number.
 
 A hex string parses as its leading digits — `"12243a"` becomes `12243`, a
 near-black nobody chose — and unknown sections and keys are **silently ignored**.
@@ -365,3 +364,74 @@ It cannot exist as described: ReaScript has **no API to set the mouse cursor**.
   mouse-modifier preferences.
 - What remains in 2.0.0 is a mode reporter: it logs which mode it would pick and
   changes neither the cursor nor any preference.
+
+## 11. Licence: the theme-sharing problem, and a mistake made here
+
+### The mistake
+
+While building the theme-format fixture for §10, I copied a published theme's
+contents into `tests/fixtures/theme_sample.ReaperTheme` and described it in a
+comment as a "real theme file". It was: `gapalil001/FlatMadness`, which is
+**GPL-3.0**. All 362 values were byte-identical, including its `ui_img` name and
+font blobs. Committed to an MIT repository in commit `5e6c8b2`.
+
+That is the exact failure this repository's audit exists to catch, and it was
+introduced by the audit. Fixed in the next commit:
+
+- The fixture is now generated from REAPER's documented stock defaults: every
+  colour `0`, `ui_img=` empty, no font blobs. It exercises the parser (same keys,
+  same sections, same value grammar) and contains nothing from anyone's theme.
+  Verified: zero values shared with the GPL file.
+- `theme_keys.txt` keeps the **key names** only. A list of INI key names is not
+  creative content, but the credit is now in the file header rather than implied.
+- Nothing from that theme ever reached the scripts themselves (checked: no font
+  blob, no `ui_img` value, no colour value appears in any `.lua` file).
+
+### The real licensing question
+
+You cannot make generated themes shareable by relicensing this repository. The
+scripts are already MIT, which is about as permissive as a licence gets; MIT is
+not the obstacle. The obstacle is that **a theme file is mostly inherited
+content**:
+
+| Component of a generated `.ReaperTheme` | Whose it is |
+|---|---|
+| The ~33 colour values our palette writes | Ours — MIT |
+| The other ~326 colour keys | The source theme's |
+| `ui_img` (names the source theme's image stack) | The source theme's artwork |
+| `[REAPER]` font blobs | The source theme's (or REAPER's defaults) |
+
+The script inherits the loaded theme rather than inventing one, because a colour
+file without the matching image stack loads and looks broken (§10). That choice
+is correct technically and means the output is a derivative work. Relicensing our
+side cannot change what someone else's licence says about their artwork.
+
+### What was changed instead
+
+1. **`LICENSE-THEMES.md`** — a permissive statement of what people may do with
+   generated files: use, share, modify, sell; what must travel with the file; and
+   the one route to a theme with no obligations at all (build from REAPER's stock
+   Default theme, so the inherited parts are Cockos's).
+2. **Provenance in the file.** Every generated theme now begins with a comment
+   block naming the theme it was derived from, stating that the colour values are
+   MIT and that the inherited artwork keeps its own licence. Somebody who finds
+   the file in three years can tell where it came from without asking.
+3. **Author credit is preserved.** Leading `;` comment lines from the source theme
+   are copied through, so an author's own attribution is not silently dropped
+   when their colours are rebuilt. (Before this, the header block was collected by
+   the parser and then discarded.)
+4. **The zip refusal stays.** Refusing to edit a `.ReaperThemeZip` is now also a
+   licensing safeguard: it cannot produce a recolour of artwork it cannot read.
+5. **CI guard.** A `license-headers` job fails if any `.lua` file lacks an
+   `@license MIT` line, so a future file cannot quietly ship without one.
+
+### What was not done, and why
+
+- **Not relicensed to CC0 / Unlicense.** It would not change the theme problem at
+  all (the inherited parts still are not ours to relicense), and MIT's attribution
+  requirement is worth keeping for a project whose output people redistribute.
+- **Not GPL.** Copyleft would *worsen* theme sharing: a recolour made from a GPL
+  theme is already GPL, and making the scripts GPL as well would add an obligation
+  to a workflow that currently has none.
+- **No blanket permission over third-party artwork.** That is not ours to grant,
+  and claiming it would be the same category of error as the "4K theme" claim.
