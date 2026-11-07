@@ -26,6 +26,8 @@ Free REAPER ReaScripts by **Scott Mills / SGM Studios**, distributed via [ReaPac
 index.xml                     ReaPack package index (generated, do not hand-edit)
 SGM-Essentials/               Bundle sources + README / INSTALL / CHANGELOG / TEST_CASES
 Rule-of-30/                   Bundle sources + README / INSTALL / CHANGELOG / TEST_CASES
+                              + MIXING-GUIDE.md, TECHNIQUES.md,
+                                SUNO-AI-SOURCE-FIXES.md, PROMPTS.md
 tools/gen_index.py            Regenerates index.xml from the script headers
 tools/check_api.py            Fails on any reaper.* call that is not real
 tools/api_allowlist.json      The real ones (REAPER 7.83 SDK header)
