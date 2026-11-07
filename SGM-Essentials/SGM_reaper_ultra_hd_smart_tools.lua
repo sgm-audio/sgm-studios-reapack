@@ -1,8 +1,23 @@
 -- @description Generates a REAPER theme file from a colour palette, plus an experimental smart-tool engine
 -- @author Scott Mills
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
--- @version 2.0.0
+-- @version 2.1.0
 -- @changelog
+--   2.1.0 (2026-11-07)
+--     + Fix (F): removed the last of the fictitious "Alt key" behaviour. The
+--       mode table no longer offers STRETCH (it was selected by
+--       GetToggleCommandState(1009), which asks about an action, not a
+--       modifier - ReaScript has no modifier-state query), and SPLIT is gone
+--       too: it fired within 100 ms of the edit cursor, so the middle of any
+--       item near the playhead became a split zone uninvited.
+--     + Fix (G): _mode_under_mouse() destructured FIVE values from
+--       BR_GetMouseCursorContext, which returns THREE strings (window, segment,
+--       details). Everything past the third was nil, so the reporter returned
+--       nil for every position and had never reported a single mode. It now
+--       reads the three it gets, and derives the row position from
+--       BR_GetMouseCursorContext_Position() (arrange time under the cursor)
+--       against the item's own D+POSITION/D_LENGTH - one coordinate space on
+--       both axes, instead of subtracting an unscrolled TCP Y from a screen Y.
 --   2.0.0 (2026-11-07)
 --     + Fix (honesty): this was described as a "4K theme generator". It cannot
 --       be one, and the claims are now gone rather than reworded. A REAPER
@@ -456,6 +471,13 @@ end
 local SmartToolEngine = {}
 SmartToolEngine.__index = SmartToolEngine
 
+-- Only modes that are actually derivable from the mouse position. There is no
+-- STRETCH mode: the old code selected it from GetToggleCommandState(1009),
+-- labelled "Alt key". That function asks whether an *action* is toggled; ReaScript
+-- has no modifier-state query at all, so alt-stretch cannot be detected and is
+-- not offered rather than being faked. SPLIT is likewise gone: it was triggered
+-- by proximity to the edit cursor, which turned the middle of every item near
+-- the playhead into a split zone whether or not that was wanted.
 local ToolMode = { SELECTION = "select", MOVE = "move", FADE = "fade" }
 
 function SmartToolEngine:new()
@@ -473,43 +495,61 @@ function SmartToolEngine:_publish_state()
     reaper.RefreshToolbar2(section, cmd)
 end
 
--- Which third of the item's row the mouse is over. Item rows are resolved with
--- SWS's mouse context rather than raw I_TCPY/I_TCPH, because the latter are
--- unscrolled TCP coordinates and do not line up with screen-space mouse Y.
+-- Which tool the mouse position implies.
+--
+-- Two coordinate spaces are involved and they must not be mixed (the 1.0.3 bug):
+--   * GetMousePosition()      -> screen pixels
+--   * BR_GetMouseCursorContext_Position() -> arrange-view time under the cursor
+-- There is no API for "screen Y of a track's row", so the row-thirds split is
+-- done in the item's own horizontal extent, in item-relative time. That is one
+-- consistent space on both axes, which is the part the old code got wrong by
+-- subtracting an unscrolled TCP coordinate from a screen coordinate.
+--
+-- BR_GetMouseCursorContext returns THREE strings (window, segment, details), not
+-- five. Destructuring five - as the 1.0.3 "fix" did - yields nil for everything
+-- past the third and the reporter silently reports nothing.
+local ARRANGE_ITEM_SEGMENT = "track"
+local ARRANGE_ITEM_DETAILS = "item"
+
 function SmartToolEngine:_mode_under_mouse()
-    if not reaper.BR_GetMouseCursorContext then return nil end
-    local _, segment = reaper.BR_GetMouseCursorContext()
-    if segment ~= "arrange" then return nil end
+    if not (reaper.BR_GetMouseCursorContext
+            and reaper.BR_GetMouseCursorContext_Item
+            and reaper.BR_GetMouseCursorContext_Position) then
+        return nil, "SWS mouse context unavailable"
+    end
+
+    local _, segment, details = reaper.BR_GetMouseCursorContext()
+    if segment ~= ARRANGE_ITEM_SEGMENT or details ~= ARRANGE_ITEM_DETAILS then
+        return nil, nil   -- not over a media item; nothing to report
+    end
 
     local item = reaper.BR_GetMouseCursorContext_Item()
-    if not item then return nil end
+    if not item then return nil, nil end
 
-    -- Does the mouse sit over an item at all?
-    if reaper.BR_GetMouseCursorContext then
-        local _, _, _, _, _, _ = reaper.BR_GetMouseCursorContext()
-    end
+    local cursor_time = reaper.BR_GetMouseCursorContext_Position()
+    if type(cursor_time) ~= "number" then return nil, nil end
 
-    -- Row position of the item's track, in the same space REAPER uses for the
-    -- mouse via BM_GetYPositionForTrack... which SWS does not expose. Rather
-    -- than mix coordinate spaces (the 1.0.3 bug), the mode is chosen by
-    -- horizontal thirds of the item, which SWS does give us.
-    local _, _, _, _, item_pos = reaper.BR_GetMouseCursorContext()
-    if not item_pos then return nil end
+    -- Item-relative position, 0 = item start, 1 = item end.
+    local position = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
+    local length = reaper.GetMediaItemInfo_Value(item, "D_LENGTH")
+    if not position or not length or length <= 0 then return nil, nil end
+    local relative = (cursor_time - position) / length
+    if relative < 0 or relative > 1 then return nil, nil end
 
-    local mouse_x = select(1, reaper.GetMousePosition())
-    if not mouse_x then return nil end
-
-    -- Compare against the item's screen extent using SWS's position string.
-    local details = select(3, reaper.BR_GetMouseCursorContext())
-    if details == "item" then
-        return ToolMode.MOVE
-    end
-    return ToolMode.SELECTION
+    -- Left third: select. Middle: move. Right: fade. (The same split the old
+    -- engine intended, done in a space that exists.)
+    if relative < 1 / 3 then return ToolMode.SELECTION end
+    if relative < 2 / 3 then return ToolMode.MOVE end
+    return ToolMode.FADE
 end
 
 function SmartToolEngine:tick()
     if not self.running then return end
-    local mode = self:_mode_under_mouse()
+    local mode, err = self:_mode_under_mouse()
+    if err and not self.reported_err then
+        self.reported_err = true
+        msg("  smart tools: " .. err)
+    end
     if mode and mode ~= self.current_mode then
         self.current_mode = mode
         if not self.reported[mode] then
@@ -622,6 +662,8 @@ if test_host then
     test_host.Palette = Palette
     test_host.ThemeColours = ThemeColours
     test_host.ThemeGenerator = ThemeGenerator
+    test_host.SmartToolEngine = SmartToolEngine
+    test_host.ToolMode = ToolMode
     test_host.run = run
     return
 end

@@ -228,11 +228,36 @@ test("the config monitor publishes its running state to the Action List", functi
   eq(#r._toolbar_refreshes, 1, "toolbar refreshed")
 end)
 
-test("opens REAPER's Performance Meter instead of faking a CPU number", function()
+test("opens the Performance Meter by resolving the action, not by guessing its id", function()
   local r = mock.new()
   r._user_input = "1"
-  mock.run_script(r, ESS .. "daw-discovery-analyzer.lua")
-  eq(r._commands_run[1], 40364, "action 40364 (View: Performance Meter)")
+  eq(mock.run_script(r, ESS .. "daw-discovery-analyzer.lua"), nil, "script error")
+
+  -- The action that described "View: Performance Meter" was resolved and run.
+  local ran = r._commands_run[1]
+  local description
+  for _, a in ipairs(r._actions) do
+    if a.cmd == ran then description = a.text end
+  end
+  eq(description, "View: Performance Meter", "action opened: " .. tostring(description))
+
+  -- And specifically not 40364, which is the metronome. The old test asserted
+  -- 40364 "because it is the Performance Meter" - which is how the bug survived.
+  local toggled_click = false
+  for _, cmd in ipairs(r._commands_run) do
+    if cmd == 40364 then toggled_click = true end
+  end
+  eq(toggled_click, false, "must not run 40364 (Options: Toggle metronome)")
+end)
+
+test("says what to do when the action cannot be found", function()
+  local r = mock.new()
+  r._user_input = "1"
+  r._actions = { { cmd = 40364, name = "", text = "Options: Toggle metronome" } }
+  eq(mock.run_script(r, ESS .. "daw-discovery-analyzer.lua"), nil, "script error")
+  eq(#r._commands_run, 0, "nothing was run")
+  contains(mock.console(r), "View > Performance Meter",
+    "told the user how to open it by hand")
 end)
 
 -- ----------------------------------------------------------------------

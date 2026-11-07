@@ -1,9 +1,20 @@
 -- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
 -- @author Scott Mills
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
--- @version 1.3.0
+-- @version 1.4.0
 -- @metapackage
 -- @changelog
+--   1.4.0 (2026-11-07)
+--     + SGM_reaper_ultra_hd_smart_tools 2.1.0: the last of the fictitious
+--       "Alt key" behaviour is gone (STRETCH and SPLIT modes removed), and the
+--       mode reporter actually works now - it destructured five values from
+--       BR_GetMouseCursorContext, which returns three, so it had never reported
+--       a single mode. Row position now comes from the SWS position helper in
+--       item space, not from mixing TCP coordinates with screen coordinates.
+--     + daw-discovery-analyzer 1.1.0: the Performance Meter is opened by
+--       resolving the action from its description at run time. The id it used
+--       before (40364) is "Options: Toggle metronome" - the report opened
+--       nothing and switched the click on.
 --   1.3.0 (2026-11-07)
 --     + SGM_reaper_ultra_hd_smart_tools 2.0.0: the "4K theme generator" claim is
 --       gone because it could not be true. A .ReaperTheme holds colours and fonts;

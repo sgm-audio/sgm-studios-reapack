@@ -158,7 +158,14 @@
 - **Steps**:
   1. Run the script and answer **Yes** to "Also start the Smart Tool engine now?"
   2. Hover over media items, then stop the script (Actions → Terminate instances)
-- **Expected Result**: Console prints "mode: …" lines. **Nothing in your mouse-modifier preferences changes**, and **the mouse cursor does not change** — ReaScript has no API to set the cursor, so the engine only reports. No Lua error.
+- **Expected Result**: Console prints "mode: …" lines — `select` over the left
+  third of an item, `move` over the middle, `fade` over the right. Nothing is
+  printed when the cursor is not over an item. **Nothing in your mouse-modifier
+  preferences changes**, and **the mouse cursor does not change** — ReaScript has
+  no API to set the cursor, so the engine only reports. No Lua error.
+- **Regression note**: until 2.1.0 this printed *nothing at all* — the SWS context
+  call was destructured into five values when it returns three, so every mode
+  resolved to nil. If you see no "mode:" lines, that bug has returned.
 - **Pass**: [ ] / [ ]
 
 ### TC-ST-03: Smart-tool engine (SWS not installed)

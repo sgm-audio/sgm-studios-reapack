@@ -50,7 +50,7 @@ Key configuration constants are at the top of each script:
 ## Requirements
 
 - REAPER 7.0+ (Lua 5.4)
-- SWS/S&M Extension — optional. It is only needed for the routing detail in the DAW analyzer and for the smart-tool cursor engine.
+- SWS/S&M Extension — optional. It is only needed for the routing detail in the DAW analyzer and for the smart-tool mode reporter.
 
 ---
 

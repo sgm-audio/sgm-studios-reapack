@@ -20,7 +20,7 @@ Version bumps: Essentials bundle **1.1.3**, Rule-of-30 bundle **1.0.3**.
 > been made once (`GetCPULoading` → `GetCPUUsage`). Everything in this report is now
 > checked against the authoritative function list, and the check is automated:
 > `tools/check_api.py` runs in CI and fails on any call that is not in the REAPER
-> 7.83 SDK header. The unit tests in `tests/` (91 cases) run every main code path
+> 7.83 SDK header. The unit tests in `tests/` (103 cases) run every main code path
 > against a mock API.
 
 ---
@@ -157,7 +157,7 @@ the repository instead of living in the audit:
 | API-name check | `tools/check_api.py` + `tools/api_allowlist.json` | Any `reaper.*` call not in the REAPER 7.83 SDK header (878 functions) or the SWS allowlist. This is the check that would have caught items 5 and 12–14 before release. |
 | Use-before-`local` check | same | `attempt to call a nil value (global 'x')` — the item-1 crash class. |
 | `PreventUIRefresh` balance | same (per function, following helper calls) | Frozen arrange view after an early return — the item-8 class. |
-| Runtime regression suite | `tests/run_tests.lua`, `run_phase_tests.lua`, `run_builder_tests.lua`, `run_theme_tests.lua` + `tests/reaper_mock.lua` (91 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
+| Runtime regression suite | `tests/run_tests.lua`, `run_phase_tests.lua`, `run_builder_tests.lua`, `run_theme_tests.lua` + `tests/reaper_mock.lua` (103 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
 | CI | `.github/workflows/ci.yml` | `lua5.4 -p`, the API check, the test suite, and the stricter `index.xml` validation. |
 
 Both `tools/check_api.py` and the test suite fail loudly on the pre-fix tree: run
@@ -214,8 +214,11 @@ actions.
 | G | `SGM_reaper_ultra_hd_smart_tools.lua` | `_calculate_tool_mode` mixes coordinate spaces: `I_TCPY`/`I_TCPH` are TCP-relative and unscrolled (negative when scrolled down), while `GetMousePosition` is screen-space. `relative_y` is therefore meaningless. | wrong result |
 | H | `daw-discovery-analyzer.lua` | `local PERFORMANCE_METER_ACTION = 40364` with the comment "View: Performance Meter". **40364 is "Options: Toggle metronome"** (SWS `Misc/Adam.cpp`: `Main_OnCommand(40364, 0); // Toggle built in metronome`). Running the analyzer toggles the click while telling the user it opened the meter. | wrong + side effect |
 
-Findings A–H are documented here and queued in `todo.md`. A, B, C, D and E are
-now **fixed and covered by tests** (see §9); F, G and H are still open.
+Findings A–H are all **fixed and covered by tests**. A, B, C, D and E in the
+wiring pass (§9); F, G and H in 2.1.0 / 1.1.0 (§12). Two of them were worse than
+recorded here: G had a second, unreported bug that made the feature work never
+(see §12), and the "fix" for H in 1.0.3 had replaced one wrong answer with
+another.
 
 ## 9. Wiring pass — what running the code for real found
 
@@ -435,3 +438,91 @@ side cannot change what someone else's licence says about their artwork.
   to a workflow that currently has none.
 - **No blanket permission over third-party artwork.** That is not ours to grant,
   and claiming it would be the same category of error as the "4K theme" claim.
+
+## 12. F, G and H: fixed, and what the audit had missed
+
+### F — the "Alt key" branch
+
+Removed rather than repaired. `GetToggleCommandState(1009)` asks whether an
+*action* is toggled; it is not a modifier query, and the API has no
+modifier-state function at all (checked against the 7.83 header, 878 functions).
+STRETCH is gone from the mode table. SPLIT went with it: it triggered within
+100 ms of the edit cursor, so the middle of any item near the playhead became a
+split zone whether or not that was wanted.
+
+Tested: no mode resolves to `stretch`, and the engine makes zero
+`GetToggleCommandState` calls while resolving a mode.
+
+### G — the coordinate mix, plus a bug the audit did not find
+
+The recorded defect was mixing unscrolled TCP coordinates with screen-space mouse
+Y. That was real, but the function could never produce a result in the first
+place:
+
+```lua
+local _, _, _, _, item_pos = reaper.BR_GetMouseCursorContext()
+if not item_pos then return nil end          -- always nil
+```
+
+`BR_GetMouseCursorContext` returns **three** strings — window, segment, details.
+Confirmed in SWS `Breeder/BR_ReaScript.h`:
+
+```c
+void BR_GetMouseCursorContext (char* windowOut, int windowOut_sz,
+                               char* segmentOut, int segmentOut_sz,
+                               char* detailsOut, int detailsOut_sz);
+```
+
+Destructuring five yields `nil` for the last two, so the guard returned on every
+call and the smart-tool reporter had never reported a single mode — including in
+the 2.0.0 rewrite, which is the version that introduced this line while
+"fixing" the coordinates.
+
+Rewritten in one consistent space: the row position comes from
+`BR_GetMouseCursorContext_Position()` (arrange-view time under the cursor)
+compared against the item's own `D_POSITION`/`D_LENGTH`, giving a 0..1 position
+along the item. Both axes are then in item space. No screen-vs-TCP conversion is
+attempted, because there is no API for "screen Y of a track row".
+
+Tested at 0.5 s / 5 s / 9.5 s along a 10 s item (select / move / fade), with the
+cursor past the item end and with the cursor over an empty arrange area. A test
+asserts the modes are non-nil specifically so this class of bug cannot return
+silently.
+
+### H — action 40364
+
+1.0.3 correctly identified that a phantom CPU function had been invented and then
+replaced it with a remembered action id. The id was wrong: 40364 is
+"Options: Toggle metronome", so the report opened nothing and switched the click
+on. One wrong answer was swapped for another.
+
+1.1.0 resolves the action from its description at run time:
+
+```lua
+local section = reaper.SectionFromUniqueID(0)
+local cmd, name = reaper.kbd_enumerateActions(section, idx, "")
+local text = reaper.kbd_getTextFromCmd(cmd, section)   -- the Action List text
+```
+
+Note `kbd_getCommandName` is a red herring — the SDK header says outright that it
+"doesn't return the command's name". `kbd_getTextFromCmd` is the description.
+The resolved id is printed, and on failure nothing runs:
+
+```
+Could not open the Performance Meter automatically: no action matching 'View: Performance Meter'
+  Open it with: View > Performance Meter
+```
+
+The mock's action table contains the real 40364 with its real description, so a
+reintroduced hard-coded id fails the suite. (The previous test asserted
+`_commands_run[1] == 40364` *"because it is the Performance Meter"* — the test
+was asserting the bug.)
+
+### Verified, not assumed
+
+Each fix was checked by reinstating the old code and confirming the suite fails:
+
+| Reintroduced | Result |
+|---|---|
+| Five-value destructuring in `_mode_under_mouse` | 4 tests fail |
+| `cmd = 40364` hard-coded in `showPerformanceMeter` | 2 tests fail |

@@ -62,19 +62,30 @@ again" is what produced the bugs.
       `instantiate = 0`/"return existing" semantics, and make the master FX chain
       idempotent (it currently stacks ReaComp/ReaEQ on every build).
       *Verify:* run twice in a test, assert the FX count is unchanged.
-- [ ] **F. Remove the fake "Alt key" check** in `SGM_reaper_ultra_hd_smart_tools.lua`
-      (`GetToggleCommandState(1009)`). There is no modifier-key state API, so the
-      stretch branch must go, not be disguised.
-- [ ] **G. Fix the coordinate mix** in `_calculate_tool_mode` (TCP-relative,
-      unscrolled `I_TCPY`/`I_TCPH` vs screen-space `GetMousePosition`). If it
-      cannot be made correct, delete the ordering logic and keep the engine as a
-      pure console logger — that is all `_update_cursor_visual` does anyway.
-- [ ] **H. Replace action ID 40364.** It is "Options: Toggle metronome"; the
-      analyzer toggles the click and tells the user it opened the Performance
-      Meter. Resolve the action by name at run time with `kbd_enumerateActions` +
-      `kbd_getCommandName` (prototypes confirmed in the SDK header) and print an
-      honest message when it is not found. Do **not** substitute another guessed
-      number.
+- [x] **F. Remove the fake "Alt key" check** in `SGM_reaper_ultra_hd_smart_tools.lua`
+      **DONE (2.1.0).** STRETCH is gone from the mode table, and so is SPLIT
+      (it fired within 100 ms of the edit cursor, so the middle of any item near
+      the playhead became a split zone uninvited). The engine never calls
+      `GetToggleCommandState`. Tested: no stretch mode exists, and the engine
+      makes zero `GetToggleCommandState` calls while resolving a mode.
+- [x] **G. Fix the coordinate mix** **DONE (2.1.0).** This one was worse than
+      the audit said: `_mode_under_mouse` destructured **five** returns from
+      `BR_GetMouseCursorContext`, which returns **three** strings (window,
+      segment, details - confirmed in SWS `Breeder/BR_ReaScript.h`). Everything
+      past the third was nil, so it returned nil for every position and had never
+      reported a single mode. Row position now comes from
+      `BR_GetMouseCursorContext_Position()` (arrange time under the cursor)
+      against the item's own `D_POSITION`/`D_LENGTH`, so both axes are in the
+      same space. Tested at 0.5 s / 5 s / 9.5 s across a 10 s item, plus
+      off-item and non-item contexts.
+- [x] **H. Replace action ID 40364.** **DONE (1.1.0).** Resolved at run time by
+      description via `SectionFromUniqueID(0)` + `kbd_enumerateActions` +
+      `kbd_getTextFromCmd` (the API named `kbd_getCommandName` does *not* return
+      the command name - its own header comment says so), and the resolved id is
+      printed. On failure nothing is run and the report says "View >
+      Performance Meter". Tested against a mock whose action table contains the
+      real 40364 = "Options: Toggle metronome", so a reintroduced hard-coded id
+      fails the suite.
 
 ### 2. Actually run every script in REAPER once
 

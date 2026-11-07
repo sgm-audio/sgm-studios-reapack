@@ -91,6 +91,11 @@ function mock.new()
     _action_section = 0,
     _action_command = 424242,
     _toggle_states = {},
+    _actions = {
+      { cmd = 40364, name = "", text = "Options: Toggle metronome" },
+      { cmd = 53133, name = "", text = "View: Performance Meter" },
+      { cmd = 40044, name = "", text = "Transport: Play/stop" },
+    },
     _extstate = {},
     _selected_items = {},
     _toolbar_refreshes = {},
@@ -108,7 +113,9 @@ function mock.new()
   function r.UpdateArrange() end
   function r.RecursiveCreateDirectory(path) return mkdir_p(path) end
   function r.defer() end
-  function r.Main_OnCommand(cmd) r._commands_run[#r._commands_run + 1] = cmd end
+  function r.Main_OnCommand(cmd, _)
+    r._commands_run[#r._commands_run + 1] = cmd
+  end
 
   -- modal dialogs ------------------------------------------------------
   function r.MB(_, text, _)
@@ -398,6 +405,40 @@ function mock.new()
     local path = r._script_path or "mock.lua"
     return path, path, r._action_section, r._action_command, 0, 0
   end
+  -- Action section / lookup, as used by daw-discovery-analyzer to resolve an
+  -- action by name. The table is deliberately hostile: it contains the real
+  -- metronome id (40364) with its real description, so a script that falls back
+  -- to a remembered number gets caught toggling the click.
+  -- SWS mouse context. The real functions return THREE strings from
+  -- BR_GetMouseCursorContext (window, segment, details) - a script that
+  -- destructures five gets nil for everything after the third, which is exactly
+  -- how the smart-tool reporter ended up silently doing nothing.
+  function r.BR_GetMouseCursorContext()
+    local ctx = r._mouse_context
+    if not ctx then return "", "", "" end
+    return ctx.window or "arrange", ctx.segment or "", ctx.details or ""
+  end
+  function r.BR_GetMouseCursorContext_Item() return r._mouse_item end
+  function r.BR_GetMouseCursorContext_Position()
+    return r._mouse_position or 0.0
+  end
+
+  function r.SectionFromUniqueID(uid)
+    if uid == 0 then return { id = 0, name = "Main" } end
+    return nil
+  end
+  function r.kbd_enumerateActions(section, idx, _)
+    if idx < 0 or idx >= #r._actions then return 0, "" end
+    local a = r._actions[idx + 1]
+    return a.cmd, a.name or ""
+  end
+  function r.kbd_getTextFromCmd(cmd, _)
+    for _, a in ipairs(r._actions) do
+      if a.cmd == cmd then return a.text end
+    end
+    return ""
+  end
+
   function r.SetToggleCommandState(section, cmd, state)
     r._toggle_states[#r._toggle_states + 1] = { section, cmd, state }
   end
