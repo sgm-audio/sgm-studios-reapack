@@ -1,10 +1,65 @@
 # SGM Essentials — Changelog
 
+Version numbers here follow the bundle metapackage
+(`SGM_CoreUtilities_Bundle.lua`); individual script versions are 1.0.x.
+
+## 1.1.2 (2026-11-07)
+
+Bug-fix and documentation pass after auditing every script against the ReaScript API.
+
+- **SGM_auto_master 1.0.1**
+  - Fixed: the limiter is the stock plug-in **`ReaLimit`**; the script asked for
+    `ReaLimiter`, so no limiter was ever inserted.
+  - Fixed: the ReaEQ high-pass was written as raw values into parameter indices
+    0–3 (which are the band enables, not band/type/freq/Q). It now uses
+    `TrackFX_SetEQParam` + `TrackFX_SetEQBandEnabled`.
+  - Fixed: ReaComp/ReaLimit values are now found by parameter name instead of
+    hard-coded indices.
+  - Added: the `HPF_FREQ` / `COMP_THRESH` / `COMP_RATIO` / `LIMIT_CEIL` constants
+    the documentation always promised (the hard-coded values differed from the docs).
+- **SGM_route_mix_bus 1.0.1**
+  - Fixed: the script ignored track selection and routed *every* top-level track.
+  - Fixed: nested tracks inside folders were skipped entirely; now only folder
+    parents are skipped (children already feed them).
+  - Fixed: with nothing to do, no dangling undo point / UI refresh.
+  - Fixed: a track literally named "Mix Bus" is no longer mistaken for the bus.
+- **SGM_FieldyBagToggle 1.0.1**
+  - Fixed: bypass state was written to FX slots that do not exist.
+  - Fixed: "No FX found on selected track." is now actually printed (per TEST_CASES).
+  - Fixed: no undo point when nothing was toggled.
+- **daw-discovery-analyzer 1.0.2**
+  - Fixed: the report called the non-existent `reaper.GetCPULoading()` and crashed
+    on every run; now uses `reaper.GetCPUUsage()` with a fallback.
+  - Fixed: audio bit depth queried `"BITDEPTH"`; the API key is `"BPS"`.
+  - Fixed: without SWS every routing edge pointed at `master`; the built-in
+    `P_DESTTRACK` API now supplies the real destination (plus parent sends).
+  - Fixed: SWS detection checked a mouse-context function that the routing code
+    never uses.
+  - Fixed: the config monitor started with no baseline.
+- **SGM_reaper_ultra_hd_smart_tools 1.0.2**
+  - Fixed: smart tools passed numeric cursor ids to `SetMouseModifier()`, which
+    only accepts mouse-modifier/action ID strings. The engine no longer touches
+    mouse modifiers at all.
+  - Removed from the docs: "toolbar clock", "CPU meter overlay", "color picker",
+    and the `Shift+F12` / `Ctrl+Alt+U` shortcuts — none of them ever existed.
+  - Fixed: a failed theme write is reported instead of printed as success.
+  - Fixed: author/metadata now matches the rest of the repository.
+- **SGM_Utils 1.0.1**
+  - Fixed: `Utils.trim()` used `(.-)` (not a Lua pattern) and returned an empty
+    string for every input.
+- **Packaging**: `index.xml` regenerated. Bundle `<reapack>` entries now include
+  the metapackage file itself, and every package version matches its script header.
+
+## 1.1.1 (2026-10-08)
+- **daw-discovery-analyzer 1.0.1**: `GetUserInputs` menu, localized functions
+- **SGM_reaper_ultra_hd_smart_tools 1.0.1**: palette fix (adds the missing
+  `ThemeMetadata.palette`), mouse-modifier save/restore, no global exports
+
 ## 1.1.0 (2026-06-03)
 - **Repository**: Files reorganized into `SGM-Essentials/` package folder
-- **Bundle**: Updated `@provides` to reference correct paths for all 6 sub-scripts
-- **Bundle**: Added `daw-discovery-analyzer.lua` to the bundle
-- **Bundle**: Added `SGM_reaper_ultra_hd_smart_tools.lua` to the bundle
+- **Bundle**: Updated `@provides` to reference correct paths for all sub-scripts
+- **Bundle**: Added `daw-discovery-analyzer.lua` and
+  `SGM_reaper_ultra_hd_smart_tools.lua` to the bundle
 
 ## 1.0.0 (2026-04-20)
 - **Initial release** of Core Utilities bundle:

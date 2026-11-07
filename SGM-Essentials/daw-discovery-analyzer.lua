@@ -1,7 +1,17 @@
 -- @description Profile the REAPER environment: plugins, routing graph, track structure, and system specs
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.0.2
 -- @changelog
+--   1.0.2 (2026-11-07)
+--     + Fix: CPU load used the non-existent reaper.GetCPULoading() and crashed the
+--       report; now uses reaper.GetCPUUsage() with a safe fallback
+--     + Fix: audio bit depth queried "BITDEPTH"; the API key is "BPS"
+--     + Fix: without SWS, routing edges were reported as "everything -> master";
+--       now uses the built-in P_DESTTRACK API for real send destinations
+--     + Fix: SWS detection checked BR_GetMouseCursorContext instead of the
+--       routing function actually used (BR_GetMediaTrackSendInfo_Track)
+--     + Fix: the config monitor now starts from a captured baseline instead of
+--       reporting nothing on the first poll
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 --     + Top Shelf audit: localize main functions (no global leaks)
@@ -48,7 +58,7 @@
 
 -- Guard: SWS/S&M Extension enables advanced routing inspection.
 -- Core features (system info, audio config, plugin discovery) work without SWS.
-local SWS_AVAILABLE = reaper.BR_GetMouseCursorContext ~= nil
+local SWS_AVAILABLE = reaper.BR_GetMediaTrackSendInfo_Track ~= nil
 if not SWS_AVAILABLE then
   reaper.ShowConsoleMsg("Note: SWS/S&M Extension not installed — routing graph features will be limited.\n")
   reaper.ShowConsoleMsg("Install from: https://www.sws-extension.org/\n\n")
@@ -90,18 +100,30 @@ function SystemAnalyzer:getAudioConfiguration()
  audio_config.input_channels = reaper.GetInputChannelCount()
  audio_config.output_channels = reaper.GetOutputChannelCount()
 
- local _, buffer_size = reaper.GetAudioDeviceInfo("BSIZE", "")
- audio_config.buffer_size = buffer_size
+ -- Valid keys: MODE, IDENT_IN, IDENT_OUT, BSIZE, SRATE, BPS
+ local ok_mode, audio_system = reaper.GetAudioDeviceInfo("MODE", "")
+ audio_config.audio_system = ok_mode and audio_system or nil
 
- local _, bit_depth = reaper.GetAudioDeviceInfo("BITDEPTH", "")
- audio_config.bit_depth = bit_depth
+ local ok_bsize, buffer_size = reaper.GetAudioDeviceInfo("BSIZE", "")
+ audio_config.buffer_size = ok_bsize and tonumber(buffer_size) or nil
+
+ local ok_bps, bit_depth = reaper.GetAudioDeviceInfo("BPS", "")
+ audio_config.bit_depth = ok_bps and tonumber(bit_depth) or nil
 
  return audio_config
 end
 
 function SystemAnalyzer:getPerformanceMetrics()
+  -- reaper.GetCPUUsage() returns 0.0-1.0 (fraction of one core-ish "REAPER CPU").
+  -- Older builds may not expose it, so fall back to 0 instead of erroring out.
+  local cpu = 0
+  if reaper.GetCPUUsage then
+    local ok, value = pcall(reaper.GetCPUUsage)
+    if ok and type(value) == "number" then cpu = value end
+  end
+
   return {
-    cpu_usage = reaper.GetCPULoading(),
+    cpu_usage = cpu,
     track_count = reaper.CountTracks(0),
     active_fx_count = self:countActiveFX(),
     memory_usage_mb = collectgarbage("count") / 1024
@@ -362,12 +384,22 @@ function SignalFlowMapper:analyzeTrackRouting(track, track_index)
       end
     end
   else
-    -- Fallback: use built-in REAPER API only
+    -- Fallback: built-in REAPER API only. P_DESTTRACK is a documented key, so real
+    -- destinations are still resolvable; folder parents are reported as edges too.
     local send_count = reaper.GetTrackNumSends(track, 0)
     for i = 0, send_count - 1 do
+      local dest_track = reaper.GetTrackSendInfo_Value(track, 0, i, "P_DESTTRACK")
+      local destination = "master"
+      if dest_track then
+        local dest_number = reaper.GetMediaTrackInfo_Value(dest_track, "IP_TRACKNUMBER")
+        if dest_number and dest_number > 0 then
+          destination = "track_" .. (dest_number - 1)
+        end
+      end
+
       table.insert(edges, {
         source = "track_" .. track_index,
-        destination = "master",
+        destination = destination,
         type = "send",
         properties = {
           volume = reaper.GetTrackSendInfo_Value(track, 0, i, "D_VOL"),
@@ -375,6 +407,20 @@ function SignalFlowMapper:analyzeTrackRouting(track, track_index)
           muted = reaper.GetTrackSendInfo_Value(track, 0, i, "B_MUTE") == 1
         }
       })
+    end
+
+    -- Parent/folder send: a folder child feeds its parent track.
+    local parent = reaper.GetParentTrack and reaper.GetParentTrack(track) or nil
+    if parent and reaper.GetMediaTrackInfo_Value(track, "B_MAINSEND") == 1 then
+      local parent_number = reaper.GetMediaTrackInfo_Value(parent, "IP_TRACKNUMBER")
+      if parent_number and parent_number > 0 then
+        table.insert(edges, {
+          source = "track_" .. track_index,
+          destination = "track_" .. (parent_number - 1),
+          type = "send",
+          properties = { kind = "parent" }
+        })
+      end
     end
   end
 
@@ -576,8 +622,12 @@ local function performComprehensiveAnalysis()
   reaper.ShowConsoleMsg("SYSTEM INFO:\n")
   reaper.ShowConsoleMsg("  OS: " .. sys_report.system.os .. "\n")
   reaper.ShowConsoleMsg("  REAPER: " .. sys_report.system.reaper_version .. "\n")
-  reaper.ShowConsoleMsg("  Sample Rate: " .. sys_report.audio.sample_rate .. " Hz\n")
+  reaper.ShowConsoleMsg("  Audio System: " .. tostring(sys_report.audio.audio_system) .. "\n")
+  reaper.ShowConsoleMsg("  Sample Rate: " .. tostring(sys_report.audio.sample_rate) .. " Hz\n")
+  reaper.ShowConsoleMsg("  Buffer Size: " .. tostring(sys_report.audio.buffer_size) .. " samples\n")
+  reaper.ShowConsoleMsg("  Bit Depth: " .. (sys_report.audio.bit_depth and (sys_report.audio.bit_depth .. " bit") or "n/a") .. "\n")
   reaper.ShowConsoleMsg("  CPU: " .. string.format("%.1f", sys_report.performance.cpu_usage * 100) .. "%\n")
+  reaper.ShowConsoleMsg("  Memory (Lua heap): " .. string.format("%.1f", sys_report.performance.memory_usage_mb) .. " MB\n")
   reaper.ShowConsoleMsg("  Active FX: " .. sys_report.performance.active_fx_count .. "\n\n")
 
   -- Plugin Analysis
@@ -616,8 +666,9 @@ end
 local function monitorConfigChanges()
   local monitor = ConfigMonitor:new()
 
-  -- Capture initial state
-  monitor:captureCurrentState()
+  -- Capture initial state as the comparison baseline (detectChanges() only
+  -- records a baseline itself, it does not return the first snapshot).
+  monitor.last_state = monitor:captureCurrentState()
 
   reaper.ShowConsoleMsg("=== CONFIG MONITOR STARTED ===\n")
   reaper.ShowConsoleMsg("Make changes to your project...\n\n")

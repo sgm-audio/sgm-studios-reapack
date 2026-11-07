@@ -1,7 +1,17 @@
 -- @description Auto-align quad-tracked DI guitars by transient analysis before amp processing
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.0.2
 -- @changelog
+--   1.0.2 (2026-11-07)
+--     + Fix: early exits (too few tracks / no transients) left UIRefresh disabled
+--       and an undo block open — validation now happens before any begin/refresh
+--     + Fix: transient detection read a multi-channel buffer as if it were mono,
+--       so stereo DI takes were analysed from interleaved garbage; it now walks
+--       channel 1 frame by frame
+--     + Fix: hard-coded 48 kHz in the reports — uses the project sample rate
+--     + Fix: the reported peak level stopped accumulating once a transient was
+--       found; it is now the true peak of the analysis window
+--     + Clarify: "alignment_precision" is 0.1 ms, not one sample
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 --   1.0.0 (2026-05-23)
@@ -31,7 +41,7 @@ reaper.ShowConsoleMsg("=== PHASE ALIGNMENT TOOL ===\n\n")
 local CONFIG = {
   transient_threshold = 0.3,  -- Sensitivity for detecting pick attacks (0-1)
   analysis_window = 0.1,      -- Seconds to analyze for first transient
-  alignment_precision = 0.0001, -- Sample-accurate alignment (0.1ms)
+  alignment_precision = 0.0001, -- Minimum correction applied (0.1 ms; one sample @48k is ~0.021 ms)
 }
 
 -- ===================================
@@ -60,44 +70,49 @@ end
 local function findFirstTransient(item)
   local take = reaper.GetActiveTake(item)
   if not take then return nil end
+  if reaper.TakeIsMIDI(take) then return nil end
 
   local source = reaper.GetMediaItemTake_Source(take)
   local sample_rate = reaper.GetMediaSourceSampleRate(source)
   local num_channels = reaper.GetMediaSourceNumChannels(source)
 
+  if not sample_rate or sample_rate <= 0 then return nil end
   if num_channels == 0 then return nil end
 
   -- Get audio accessor
   local accessor = reaper.CreateTakeAudioAccessor(take)
+  if not accessor then return nil end
+
   local start_time = reaper.GetMediaItemInfo_Value(item, "D_POSITION")
 
   -- Analyze first 100ms for transient
-  local samples_to_analyze = math.floor(CONFIG.analysis_window * sample_rate)
+  local samples_to_analyze = math.max(1, math.floor(CONFIG.analysis_window * sample_rate))
+  -- The buffer is interleaved: samples * channels
   local audio_buffer = reaper.new_array(samples_to_analyze * num_channels)
+  audio_buffer.clear()
 
-  -- Read audio data
+  -- Read audio data (start offset is relative to the take)
   local samples_read = reaper.GetAudioAccessorSamples(
     accessor,
     sample_rate,
     num_channels,
-    0,  -- Start offset
+    0,  -- Start offset (seconds into the take)
     samples_to_analyze,
     audio_buffer
   )
 
-  -- Find first peak above threshold
+  -- Find first peak above threshold. Walk frame by frame and look at channel 1
+  -- only; treating the interleaved buffer as mono mixes channels and frame rates.
   local transient_sample = nil
   local peak_value = 0
 
-  for i = 1, samples_read do
-    local sample_value = math.abs(audio_buffer[i])
-
-    if sample_value > CONFIG.transient_threshold then
-      transient_sample = i
-      break
-    end
-
+  for frame = 0, (samples_read or 0) - 1 do
+    local sample_value = math.abs(audio_buffer[frame * num_channels] or 0)
     peak_value = math.max(peak_value, sample_value)
+
+    if not transient_sample and sample_value > CONFIG.transient_threshold then
+      transient_sample = frame
+    end
   end
 
   reaper.DestroyAudioAccessor(accessor)
@@ -119,21 +134,29 @@ end
 -- PHASE ALIGNMENT ENGINE
 -- ===================================
 
+local function projectSampleRate()
+  local rate = reaper.GetProjectSampleRate()
+  if not rate or rate <= 0 then rate = 48000 end
+  return rate
+end
+
 local function alignSelectedTracks()
-  -- Save edit state
-  local saved_cursor = reaper.GetCursorPosition()
-  local saved_sel_s, saved_sel_e = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
-
-  reaper.Undo_BeginBlock()
-  reaper.PreventUIRefresh(1)
-
   local tracks = getSelectedTracks()
+  local project_sample_rate = projectSampleRate()
 
+  -- Validate first: never open an undo block / disable the UI before we know
+  -- we are going to do something.
   if #tracks < 2 then
     reaper.ShowConsoleMsg("❌ Please select at least 2 tracks to align\n")
     reaper.ShowConsoleMsg("   (e.g., Rhythm L and Rhythm R guitar tracks)\n")
     return
   end
+
+  -- Save edit state
+  local saved_cursor = reaper.GetCursorPosition()
+  local saved_sel_s, saved_sel_e = reaper.GetSet_LoopTimeRange(false, false, 0, 0, false)
+
+  reaper.PreventUIRefresh(1)
 
   reaper.ShowConsoleMsg("Analyzing " .. #tracks .. " selected tracks...\n\n")
 
@@ -165,7 +188,7 @@ local function alignSelectedTracks()
           earliest_transient = transient_time
         end
       else
-        reaper.ShowConsoleMsg(string.format("  Track %d (%s): No transient found (increase threshold?)\n",
+        reaper.ShowConsoleMsg(string.format("  Track %d (%s): No transient found (lower the threshold?)\n",
           i, track_name))
       end
     else
@@ -176,8 +199,13 @@ local function alignSelectedTracks()
   if not earliest_transient then
     reaper.ShowConsoleMsg("\n❌ No transients detected in any track\n")
     reaper.ShowConsoleMsg("   Try lowering the threshold or checking your audio\n")
+    reaper.PreventUIRefresh(-1)
+    reaper.UpdateArrange()
     return
   end
+
+  -- At least one track will move: open the single undo point for this action.
+  reaper.Undo_BeginBlock()
 
   -- Step 2: Align all tracks to the earliest transient
   reaper.ShowConsoleMsg("\n=== ALIGNING TRACKS ===\n")
@@ -189,8 +217,8 @@ local function alignSelectedTracks()
 
       if math.abs(offset) > CONFIG.alignment_precision then
         nudgeItem(data.item, offset)
-        reaper.ShowConsoleMsg(string.format("  ✓ %s: Adjusted by %.4fs (%.2f samples @ 48kHz)\n",
-          data.name, offset, offset * 48000))
+        reaper.ShowConsoleMsg(string.format("  ✓ %s: Adjusted by %.4fs (%+.1f samples @ %d Hz)\n",
+          data.name, offset, offset * project_sample_rate, math.floor(project_sample_rate)))
       else
         reaper.ShowConsoleMsg(string.format("  ✓ %s: Already aligned\n", data.name))
       end
@@ -255,8 +283,9 @@ local function analyzePhaseCorrelation()
   local pos2 = reaper.GetMediaItemInfo_Value(item2, "D_POSITION")
   local time_diff = math.abs(pos1 - pos2)
 
-  reaper.ShowConsoleMsg("Position difference: " .. string.format("%.4fs (%.1f samples @ 48kHz)\n",
-    time_diff, time_diff * 48000))
+  local rate = projectSampleRate()
+  reaper.ShowConsoleMsg("Position difference: " .. string.format("%.4fs (%.1f samples @ %d Hz)\n",
+    time_diff, time_diff * rate, math.floor(rate)))
 
   if time_diff < 0.0002 then  -- Less than 0.2ms
     reaper.ShowConsoleMsg("\n✅ EXCELLENT: Tracks are sample-accurate aligned\n")

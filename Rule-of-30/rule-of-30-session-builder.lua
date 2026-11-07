@@ -1,7 +1,23 @@
 -- @description Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density
 -- @author Scott Mills
--- @version 1.0.1
+-- @version 1.0.2
 -- @changelog
+--   1.0.2 (2026-11-07)
+--     + Fix (fatal): the plugin-aware builder called the `addFX` local before it
+--       was declared, so "Build Session" with Compact Mode off raised
+--       "attempt to call a nil value (global 'addFX')"
+--     + Fix (fatal): CreateTrackSend() can return -1; the send volume/channel
+--       setters then errored on a nil send
+--     + Fix: the master track is no longer stripped of its master/parent send
+--     + Fix: the plugin inventory is read from the directory the script actually
+--       lives in (was hard-coded to the REAPER resource root)
+--     + Fix: the sidechain send now reuses an existing Kick Out -> Bass send
+--       instead of stacking a new one on every run
+--     + Fix: an existing tempo/time-signature marker is used instead of adding one
+--     + Fix: "Close" (7) is now handled; it used to fall through with no feedback
+--     + Fix: sidechain sends reuse an existing Kick Out -> Bass send, guarded
+--       against CreateTrackSend() returning -1
+--     + Removed: unused helper parameters and dead locals
 --   1.0.1 (2026-10-08)
 --     + Top Shelf audit: undo + PreventUIRefresh on all six actions
 --     + Top Shelf audit: replace gfx.showmenu with GetUserInputs
@@ -16,7 +32,15 @@
 -- @about
 --   ## Rule of 30 Session Builder
 --   Builds a professional heavy industrial/metal session template. Drop Bb tuning.
---   Requires rule-of-30-plugin-presets.lua in the same directory.
+--
+--   **Plugin inventory (optional):** if a file called `plugin_inventory.json`
+--   exists next to this script (or in the REAPER resource folder) it is used to
+--   pick "best" plug-ins per category. The JSON must look like:
+--   `{"by_category": {"EQ": ["ReaEQ", ...], "Dynamics": ["ReaComp", ...]}}`
+--   Without it the builder just creates the track skeleton with stock FX.
+--
+--   **Compact Mode:** when ON (default), tracks whose category has no matching
+--   plug-in are skipped entirely. Toggle it with menu option 0.
 -- RULE OF 30 SESSION BUILDER
 -- Professional 48+ Track Industrial/Heavy Metal Session Template
 -- Drop Bb Tuning | 95-110 BPM | Massive Density Production
@@ -56,95 +80,162 @@ local CONFIG = {
 -- PLUGIN AWARENESS UTILITIES
 -- ===================================
 
--- Minimal JSON parser for Lua (Substantiated)
+-- ===================================
+-- MINIMAL JSON PARSER
+-- ===================================
+-- Only needed for the optional plugin inventory file. Handles objects, arrays,
+-- strings (with \\ escapes), numbers, booleans and null.
 local JSON = {}
-function JSON.parse(s)
-  local i = 1
-  local function parse_value()
-    local char = s:sub(i,i)
-    if not char or char == "" then return nil end
-    if char == '{' then
-      i = i + 1
-      local res = {}
-      while true do
-        while s:sub(i,i):match('%s') do i = i + 1 end
-        if s:sub(i,i) == '}' then i = i + 1 break end
-        local key = s:match('^%s*"([^"]+)"%s*:', i)
-        if key then
-          i = i + #s:match('^%s*"[^"]+"%s*:', i)
-          res[key] = parse_value()
-        end
-        while s:sub(i,i):match('%s') do i = i + 1 end
-        if s:sub(i,i) == ',' then i = i + 1 end
-      end
-      return res
-    elseif char == '[' then
-      i = i + 1
-      local res = {}
-      while true do
-        while s:sub(i,i):match('%s') do i = i + 1 end
-        if s:sub(i,i) == ']' then i = i + 1 break end
-        table.insert(res, parse_value())
-        while s:sub(i,i):match('%s') do i = i + 1 end
-        if s:sub(i,i) == ',' then i = i + 1 end
-      end
-      return res
-    elseif char == '"' then
-      local val = s:match('^"([^"]*)"', i)
-      i = i + (val and #val + 2 or 1)
-      return val
-    elseif s:match('^[%d%.%-]+', i) then
-      local val = s:match('^[%d%.%-]+', i)
-      i = i + #val
-      return tonumber(val)
-    elseif s:match('^true', i) then i = i + 4 return true
-    elseif s:match('^false', i) then i = i + 5 return false
-    elseif s:match('^null', i) then i = i + 4 return nil
+
+local function json_skip_ws(s, i)
+  local _, last = s:find("^%s*", i)
+  return (last or i - 1) + 1
+end
+
+local function json_decode(s, i)
+  i = json_skip_ws(s, i)
+  local c = s:sub(i, i)
+
+  if c == "{" then
+    local res = {}
+    i = json_skip_ws(s, i + 1)
+    if s:sub(i, i) == "}" then return res, i + 1 end
+    while true do
+      i = json_skip_ws(s, i)
+      local key, next_i = json_decode(s, i)
+      if type(key) ~= "string" then return nil, i end
+      i = json_skip_ws(s, next_i)
+      if s:sub(i, i) ~= ":" then return nil, i end
+      local value
+      value, i = json_decode(s, i + 1)
+      res[key] = value
+      i = json_skip_ws(s, i)
+      local sep = s:sub(i, i)
+      if sep == "," then i = i + 1
+      elseif sep == "}" then return res, i + 1
+      else return nil, i end
     end
-    i = i + 1
-    return nil
+
+  elseif c == "[" then
+    local res = {}
+    i = json_skip_ws(s, i + 1)
+    if s:sub(i, i) == "]" then return res, i + 1 end
+    while true do
+      local value
+      value, i = json_decode(s, i)
+      res[#res + 1] = value
+      i = json_skip_ws(s, i)
+      local sep = s:sub(i, i)
+      if sep == "," then i = i + 1
+      elseif sep == "]" then return res, i + 1
+      else return nil, i end
+    end
+
+  elseif c == '"' then
+    local out, j = {}, i + 1
+    while j <= #s do
+      local ch = s:sub(j, j)
+      if ch == "\\" then
+        local esc = s:sub(j + 1, j + 1)
+        local map = { n = "\n", t = "\t", r = "\r", b = "\b", f = "\f" }
+        out[#out + 1] = map[esc] or esc
+        j = j + 2
+      elseif ch == '"' then
+        return table.concat(out), j + 1
+      else
+        out[#out + 1] = ch
+        j = j + 1
+      end
+    end
+    return nil, j
+
+  elseif s:sub(i, i + 3) == "true" then
+    return true, i + 4
+  elseif s:sub(i, i + 4) == "false" then
+    return false, i + 5
+  elseif s:sub(i, i + 3) == "null" then
+    return nil, i + 4
+  else
+    local num = s:match("^-?%d+%.?%d*[eE]?[-+]?%d*", i)
+    if num and num ~= "" then
+      return tonumber(num), i + #num
+    end
+    return nil, i
   end
-  return parse_value()
+end
+
+function JSON.parse(str)
+  if type(str) ~= "string" then return nil end
+  local value = json_decode(str, 1)
+  return value
+end
+
+-- Locate plugin_inventory.json: next to this script first, then the REAPER
+-- resource root (legacy location), so it works however ReaPack laid the files out.
+local function findInventoryPath()
+  local candidates = {}
+  local function add(dir)
+    if dir and dir ~= "" then
+      candidates[#candidates + 1] = dir .. "/plugin_inventory.json"
+    end
+  end
+
+  local ok, _, script_filename = pcall(reaper.get_action_context)
+  if ok and type(script_filename) == "string" then
+    add(script_filename:match("^(.*)[/\\]"))
+  end
+  add(reaper.GetResourcePath())
+  return candidates
 end
 
 local function loadPluginInventory()
-  local resource_path = reaper.GetResourcePath()
-  local inventory_path = resource_path .. "/plugin_inventory.json"
-  local file = io.open(inventory_path, "r")
-  if not file then 
-    reaper.ShowConsoleMsg("Warning: plugin_inventory.json not found. Run list-all-available-plugins.lua first.\n")
-    return nil 
+  for _, inventory_path in ipairs(findInventoryPath()) do
+    local file = io.open(inventory_path, "r")
+    if file then
+      local content = file:read("*all")
+      file:close()
+
+      local ok, inventory = pcall(JSON.parse, content)
+      if not ok or type(inventory) ~= "table" then
+        reaper.ShowConsoleMsg("Warning: could not parse " .. inventory_path .. " (ignoring).\n")
+        return nil
+      end
+
+      CONFIG.inventory = inventory
+      return inventory
+    end
   end
-  local content = file:read("*all")
-  file:close()
-  
-  local ok, inventory = pcall(JSON.parse, content)
-  if not ok or not inventory then
-    reaper.ShowConsoleMsg("Error: Failed to parse plugin_inventory.json. Regenerate it.\n")
-    return nil
-  end
-  
-  CONFIG.inventory = inventory
-  return inventory
+
+  reaper.ShowConsoleMsg("Note: no plugin_inventory.json found — building the track skeleton only.\n")
+  reaper.ShowConsoleMsg("      Expected format: {\"by_category\": {\"EQ\": [\"ReaEQ\"], ...}}\n")
+  return nil
 end
 
 local function getBestPlugin(category, keywords)
   if not CONFIG.inventory then return nil end
-  if not CONFIG.inventory.by_category or not CONFIG.inventory.by_category[category] then return nil end
-  local list = CONFIG.inventory.by_category[category]
-  
+  local by_category = CONFIG.inventory.by_category
+  if type(by_category) ~= "table" or type(by_category[category]) ~= "table" then return nil end
+  local list = by_category[category]
+  if #list == 0 then return nil end
+
   if not keywords or #keywords == 0 then return list[1] end
-  
+
   -- Try to match keywords
   for _, kw in ipairs(keywords) do
     for _, plugin in ipairs(list) do
-      if plugin:lower():find(kw:lower()) then
+      if type(plugin) == "string" and plugin:lower():find(kw:lower(), 1, true) then
         return plugin
       end
     end
   end
-  
+
   return list[1] -- Fallback to first in category
+end
+
+-- Defined before addSmartFX so the plugin-aware builder can call it.
+local function addFX(track, fx_name)
+  local fx_index = reaper.TrackFX_AddByName(track, fx_name, false, -1)
+  return fx_index
 end
 
 local function addSmartFX(track, category, keywords)
@@ -160,7 +251,7 @@ end
 -- UTILITY FUNCTIONS
 -- ===================================
 
-local function createTrack(name, color, parent_folder)
+local function createTrack(name, color)
   local track_index = reaper.CountTracks(0)
   reaper.InsertTrackAtIndex(track_index, true)
   local track = reaper.GetTrack(0, track_index)
@@ -178,8 +269,8 @@ local function createSmartTrack(name, color, category, keywords)
   if CONFIG.compact_mode then
     local plugin = getBestPlugin(category, keywords)
     if not plugin then 
-      reaper.ShowConsoleMsg("  Skipping track (no " .. category .. " found): " .. name .. "\n")
-      reaper.ShowConsoleMsg("  ⚠ Run list-all-available-plugins.lua to generate plugin inventory\n")
+      reaper.ShowConsoleMsg("  Skipping track (no " .. category .. " in the plugin inventory): " .. name .. "\n")
+      reaper.ShowConsoleMsg("  ⚠ Menu option 0 turns Compact Mode off to build the full skeleton\n")
       return nil 
     end
   end
@@ -206,23 +297,31 @@ local function closeFold()
   end
 end
 
-local function addFX(track, fx_name)
-  local fx_index = reaper.TrackFX_AddByName(track, fx_name, false, -1)
-  return fx_index
-end
-
-local function createSend(source_track, dest_track, volume_db, pre_fader)
+-- Returns the new send index, or nil when REAPER refused to create the send.
+local function createSend(source_track, dest_track, volume_db, send_mode)
   local send_index = reaper.CreateTrackSend(source_track, dest_track)
+  if not send_index or send_index < 0 then
+    return nil
+  end
 
   -- Convert dB to volume (0dB = 1.0)
-  local volume = 10^(volume_db/20)
+  local volume = 10^((volume_db or 0)/20)
   reaper.SetTrackSendInfo_Value(source_track, 0, send_index, "D_VOL", volume)
 
-  if pre_fader then
-    reaper.SetTrackSendInfo_Value(source_track, 0, send_index, "I_SENDMODE", 3)
+  if send_mode then
+    reaper.SetTrackSendInfo_Value(source_track, 0, send_index, "I_SENDMODE", send_mode)
   end
 
   return send_index
+end
+
+local function findSendIndex(source_track, dest_track)
+  for i = 0, reaper.GetTrackNumSends(source_track, 0) - 1 do
+    if reaper.GetTrackSendInfo_Value(source_track, 0, i, "P_DESTTRACK") == dest_track then
+      return i
+    end
+  end
+  return nil
 end
 
 local function setPan(track, pan_value)
@@ -256,8 +355,18 @@ local function buildRuleOf30Session()
 
   -- Set project properties
   reaper.GetSetProjectInfo(0, "PROJECT_SRATE", CONFIG.sample_rate, true)
-  reaper.SetTempoTimeSigMarker(0, -1, -1, -1, CONFIG.bpm, 0, 0, false)
   reaper.GetSetProjectInfo(0, "PROJECT_TIMEBASE", 1, true)  -- Time base: beats
+
+  -- Tempo: update the first tempo marker if one exists, otherwise create it.
+  -- SetTempoTimeSigMarker(..., -1, -1, ...) inserts a *new* marker at the edit
+  -- cursor every run, which frees the tempo map instead of setting the project tempo.
+  if reaper.CountTempoTimeSigMarkers(0) > 0 then
+    reaper.SetTempoTimeSigMarker(0, 0, -1, -1, CONFIG.bpm,
+      CONFIG.time_signature_num, CONFIG.time_signature_den, false)
+  else
+    reaper.SetTempoTimeSigMarker(0, -1, 0, -1, CONFIG.bpm,
+      CONFIG.time_signature_num, CONFIG.time_signature_den, true)
+  end
 
   reaper.ShowConsoleMsg("Building session structure...\n")
   
@@ -452,6 +561,8 @@ local function buildRuleOf30Session()
 
   local master_track = reaper.GetMasterTrack(0)
   reaper.GetSetMediaTrackInfo_String(master_track, "P_NAME", "🎛️ MASTER (Ozone Chain)", true)
+  -- The master track must always keep its master/parent send enabled.
+  reaper.SetMediaTrackInfo_Value(master_track, "B_MAINSEND", 1)
 
   -- Add master bus FX chain (placeholders - user will swap with actual plugins)
   -- These are generic names that work across platforms
@@ -459,7 +570,13 @@ local function buildRuleOf30Session()
   addFX(master_track, "ReaEQ")    -- Placeholder for final shaping
 
   reaper.ShowConsoleMsg("\n✅ Session structure complete!\n")
-  reaper.ShowConsoleMsg("Total tracks created: " .. reaper.CountTracks(0) .. "\n\n")
+  reaper.ShowConsoleMsg("Total tracks in project: " .. reaper.CountTracks(0) .. "\n")
+  if CONFIG.compact_mode and not CONFIG.inventory then
+    reaper.ShowConsoleMsg("⚠ Compact Mode is ON but no plugin inventory was found,\n")
+    reaper.ShowConsoleMsg("  so plugin-aware tracks were skipped. Turn it off with option 0\n")
+    reaper.ShowConsoleMsg("  to build the full skeleton with stock FX.\n")
+  end
+  reaper.ShowConsoleMsg("\n")
 
   endUndo("Create Rule of 30 Session")
 
@@ -491,24 +608,35 @@ local function setupKickBassSidechain()
     end
   end
 
-  if kick_out and bass_di then
-    -- Send kick to sidechain input (channels 3/4) of bass
-    local send_idx = reaper.CreateTrackSend(kick_out, bass_di)
+  -- I_DSTCHAN: low 10 bits = starting channel index, bit 1024 = mix to mono.
+  -- Destination "3/4" is therefore channel index 2 (0-based) without the mono bit.
+  local SIDECHAIN_DST_CHAN = 2
 
-    -- Configure as 3/4 output (sidechain)
-    reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx, "I_SRCCHAN", 0)  -- Source stereo
-    reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx, "I_DSTCHAN", 2 + 1024)  -- Dest 3/4 (sidechain)
+  local function ensureSidechainSend(dest_track, dest_label)
+    local send_idx = findSendIndex(kick_out, dest_track)
+    if send_idx then
+      reaper.ShowConsoleMsg("• Sidechain already exists: Kick Out -> " .. dest_label .. "\n")
+    else
+      send_idx = reaper.CreateTrackSend(kick_out, dest_track)
+      if not send_idx or send_idx < 0 then
+        reaper.ShowConsoleMsg("❌ Could not create send: Kick Out -> " .. dest_label .. "\n")
+        return
+      end
+      reaper.ShowConsoleMsg("✓ Sidechain: Kick Out -> " .. dest_label .. " (channels 3/4)\n")
+    end
+
+    -- Configure as 3/4 output (sidechain), stereo source 1/2
+    reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx, "I_SRCCHAN", 0)
+    reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx, "I_DSTCHAN", SIDECHAIN_DST_CHAN)
     reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx, "D_VOL", 1.0)
+  end
 
-    reaper.ShowConsoleMsg("✓ Sidechain: Kick Out -> Bass DI (channels 3/4)\n")
+  if kick_out and bass_di then
+    ensureSidechainSend(bass_di, "Bass DI")
 
     -- Do the same for bass synth
     if bass_synth then
-      local send_idx2 = reaper.CreateTrackSend(kick_out, bass_synth)
-      reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx2, "I_SRCCHAN", 0)
-      reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx2, "I_DSTCHAN", 2 + 1024)
-      reaper.SetTrackSendInfo_Value(kick_out, 0, send_idx2, "D_VOL", 1.0)
-      reaper.ShowConsoleMsg("✓ Sidechain: Kick Out -> Bass Synth (channels 3/4)\n")
+      ensureSidechainSend(bass_synth, "Bass Synth")
     end
 
     reaper.ShowConsoleMsg("\nNow add a sidechain compressor/dynamic EQ to the bass tracks!\n")
@@ -688,6 +816,8 @@ local function showMenu()
     beginUndo()
     setupKickBassSidechain()
     endUndo("Rule of 30: Kick/Bass Sidechain Routing")
+  elseif result == 7 then
+    reaper.ShowConsoleMsg("Closed — no changes made.\n")
   end
 end
 

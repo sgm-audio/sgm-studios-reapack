@@ -1,13 +1,22 @@
 -- @description SGM Studios shared utility library
 -- @author Scott Mills
--- @version 1.0.0
+-- @version 1.0.1
 -- @noindex
+-- @changelog
+--   1.0.1 (2026-11-07)
+--     + Fix: trim() used "(.-)" (not a Lua pattern) and always returned ""
+--     + Doc: JSON.parse is a small number/string/array/object parser, not a
+--       full JSON implementation
+--   1.0.0 (2026-05-23)
+--     + Initial release
 
 local Utils = {}
 
 -- String utilities
+-- NOTE: Lua patterns have no '-' (non-greedy) repetition, so the old
+-- "^%s*(.-)%s*$" returned an EMPTY string for any input. Use gsub instead.
 function Utils.trim(s)
-  return s:match("^%s*(.-)%s*$")
+  return (tostring(s):gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
 -- Math utilities
@@ -56,7 +65,8 @@ function Utils.get_extension(path)
   return path:match("%.([^%.]+)$") or ""
 end
 
--- JSON parser (consolidated from generate-fx-chains.lua, rule-of-30-session-builder.lua)
+-- JSON parser (same dialect as the one inlined in the Rule of 30 session builder).
+-- NOTE: numbers only; this is not a general-purpose JSON library.
 Utils.JSON = {}
 function Utils.JSON.parse(s)
   local i = 1

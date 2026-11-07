@@ -1,0 +1,135 @@
+# Audit report — 2026-11-07
+
+Full static audit of all 11 Lua scripts, the ReaPack index and the documentation.
+Scope: correctness against the REAPER ReaScript API, runtime crash paths, undo /
+UI-refresh hygiene, packaging (ReaPack index semantics) and doc accuracy.
+
+**Verification performed:** Lua 5.4 parse of every script, XML validation of
+`index.xml`, every `<source>` URL checked against the repository tree, and each
+script executed against a mocked `reaper` API covering its main code path
+(including the crash paths below, both before and after the fixes).
+**Not performed:** running inside real REAPER — see the `TEST_CASES.md` files in
+each bundle.
+
+Version bumps: Essentials bundle **1.1.2**, Rule-of-30 bundle **1.0.2**.
+
+---
+
+## 1. Crashes / definite bugs (fixed)
+
+| # | File | Problem | Fix |
+|---|------|---------|-----|
+| 1 | `rule-of-30-session-builder.lua` | The local `addFX` was declared *after* `addSmartFX`, so "Build Session" with Compact Mode **off** died with `attempt to call a nil value (global 'addFX')`. | `addFX` moved above its first use. |
+| 2 | `rule-of-30-session-builder.lua` | `CreateTrackSend()` can return `-1`; the following `SetTrackSendInfo_Value(..., -1, ...)` then errors. | All send creation guarded; failures reported to the console. |
+| 3 | `SGM_auto_master.lua` | The stock limiter is called **`ReaLimit`**; the script asked for `ReaLimiter`, so no limiter was ever added (silently). | Correct plug-in name. |
+| 4 | `SGM_auto_master.lua` | The ReaEQ high-pass wrote raw values into parameter indices 0–3, which are the *band enable* toggles — the EQ was mis-set, not a 30 Hz high-pass. | Uses `TrackFX_SetEQParam` + `TrackFX_SetEQBandEnabled`; other FX params are found by name instead of hard-coded indices. |
+| 5 | `daw-discovery-analyzer.lua` | `reaper.GetCPULoading()` does not exist (0 results in a GitHub code search; `GetCPUUsage` has 129). Every "Comprehensive Analysis" run crashed on that line. | `reaper.GetCPUUsage()` with an existence check and fallback. |
+| 6 | `daw-discovery-analyzer.lua` | Audio bit depth queried `"BITDEPTH"`; the documented keys are `MODE, IDENT_IN, IDENT_OUT, BSIZE, SRATE, BPS`. | Queries `BPS` (and `MODE`), with nil-safe formatting. |
+| 7 | `SGM_reaper_ultra_hd_smart_tools.lua` | `SetMouseModifier("MM_CTX_ITEM", 0, cursor_id)` was called with invented numbers (182–185). The API only accepts mouse-modifier / command ID **strings** — this silently wrote invalid values into the user's mouse-modifier prefs. | The engine no longer touches mouse modifiers; it logs the resolved tool. Saving/restoring a modifier it never set is gone too. |
+| 8 | `phase-alignment-tool.lua` | Both early exits (`< 2` tracks, no transients) returned *after* `PreventUIRefresh(1)` and `Undo_BeginBlock()`, leaving the arrange view frozen/undrawn and an undo block open. | Validation happens before anything is opened; the no-transient path unwinds the refresh. |
+| 9 | `phase-alignment-tool.lua` | Transient detection read an interleaved multi-channel buffer as if it were mono, so stereo DI takes were analysed from channel-interleaved garbage. | Walks frame by frame (`buffer[frame * num_channels]`) on channel 1. |
+| 10 | `SGM_Utils.lua` | `trim()` used `"^%s*(.-)%s*$"` — `-` is not a Lua pattern quantifier, so it returned `""` for every input. | `gsub` based implementation (unit-tested). |
+
+## 2. Logic bugs (fixed)
+
+- **`SGM_route_mix_bus.lua` — selection ignored.** The help text says "select the
+  tracks to route", but the loop processed every track in the project. Now: selection
+  is honoured, and with nothing selected the documented all-top-level-tracks fallback
+  applies (with a console note).
+- **`SGM_route_mix_bus.lua` — folder children skipped.** Any track with
+  `I_FOLDERDEPTH ~= 0` was skipped, which is *every* child inside a folder. Only
+  folder *parents* are skipped now (their children already feed them).
+- **`SGM_route_mix_bus.lua`** — a track literally named "Mix Bus" was treated as the
+  bus; dangling undo point / UI refresh when there was nothing to do; `DRY_RUN`
+  created nothing yet reported previews of a bus that would not exist.
+- **`SGM_FieldyBagToggle.lua`** — wrote `TrackFX_SetEnabled` to slots 3–5 even when
+  the track had fewer FX; the documented "No FX found on selected track." message
+  was unreachable (a message box was shown instead); no undo point is created when
+  nothing changes.
+- **`daw-discovery-analyzer.lua`** — without SWS every routing edge was reported as
+  `track_N -> master`; the built-in `P_DESTTRACK` API gives the real destination
+  (plus parent sends). SWS detection now checks `BR_GetMediaTrackSendInfo_Track`,
+  the function the routing code actually calls.
+- **`daw-discovery-analyzer.lua`** — the config monitor started with no baseline, so
+  the first poll never reported anything.
+- **`rule-of-30-session-builder.lua`** — a new tempo marker was inserted at the edit
+  cursor on every build (`SetTempoTimeSigMarker(..., -1, -1, ...)`); an existing
+  marker is now updated. The master track is explicitly kept out of the
+  master/parent-send stripping. Menu option **7 (Close)** did nothing and said
+  nothing. `plugin_inventory.json` was only searched in the REAPER resource root —
+  it is now looked for next to the script first.
+- **`rule-of-30-session-builder.lua`** — sidechain sends were duplicated on every
+  run, and `I_DSTCHAN = 2 + 1024` set the *mix-to-mono* bit instead of the channel
+  offset. Now reuses an existing send and targets channel index 2 (3/4).
+- **`rule-of-30-session-builder.lua`** — the inline JSON parser ignored `\` escapes.
+  Replaced with a parser that handles them and returns only the parsed value
+  (unit-tested against nested objects/arrays, numbers, booleans, `null`, escapes).
+- **`phase-alignment-tool.lua`** — hard-coded 48 kHz in the sample-offset reports;
+  the reported "peak" stopped accumulating once a transient was found.
+- **`SGM_reaper_ultra_hd_smart_tools.lua`** — a failed theme write still printed the
+  path as success; theme colours were written in `pairs()` order (non-deterministic
+  output); theme metadata said author "EchoBeat" and a version unrelated to the
+  package.
+
+## 3. Documentation errors (fixed)
+
+- **`SGM_reaper_ultra_hd_smart_tools.lua`** advertised a "toolbar clock", a "CPU
+  meter overlay", a "color picker", and the shortcuts `Shift+F12` / `Ctrl+Alt+U`.
+  None of them exist anywhere in the code — removed, and replaced with what the
+  script actually does.
+- **`SGM-Essentials/README.md`** said the mix-bus script creates a *folder* and moves
+  tracks into it (it uses sends and never moves tracks), and listed `HPF_FREQ`,
+  `COMP_THRESH`, `LIMIT_CEIL` as editable constants — they did not exist in the
+  script (they do now, and the docs match the applied values).
+- **`SGM-Essentials/README.md`** claimed `SGM_Utils.lua` is "loaded by other
+  scripts"; nothing loads it. Now described as available for your own scripts.
+- **`SGM-Essentials/README.md`** said "Seven scripts"; there are five runnable
+  scripts plus a library and a metapackage.
+- **`SGM-Essentials/INSTALL.md`** told Windows users to install into
+  `%APPDATA%\REAPER\Scripts\...` as if it were universal, and said to expect
+  "all 6 scripts" in the Actions list (libraries and metapackages are not actions).
+  Portable macOS/Linux paths added.
+- **`Rule-of-30/*`** described `rule-of-30-plugin-presets.lua` as a runtime
+  dependency the builder loads; the builder never loads it. Reworded as a reference
+  library everywhere (bundle header, README, INSTALL, index description).
+- **`Rule-of-30/*`** referenced `list-all-available-plugins.lua` (not in this
+  repository, not on ReaPack) as the fix for a missing plugin inventory, and did not
+  document the expected `plugin_inventory.json` format or the consequence of Compact
+  Mode with no inventory. Consolidated into one clear note (console + docs).
+- **`SGM-Essentials/CHANGELOG.md`** was missing 1.1.1 entirely and dated 1.1.0
+  differently from the script headers. Both changelogs now reflect the real history.
+- **Test cases** asserted behaviour the code did not have (folder creation, the
+  `GetCPULoading` report, the phantom smart-tool features). Updated, and cases added
+  for the new guards (empty project, single FX chain, SWS-missing smart tools,
+  early-exit phase alignment, repeated sidechain setup).
+
+## 4. Packaging (`index.xml`)
+
+- Versions in the index were stale (`SGM_auto_master`, `SGM_route_mix_bus`,
+  `SGM_FieldyBagToggle` were 1.0.0 while the headers said 1.0.1 — those fixes would
+  never have reached users). Regenerated from the script headers.
+- The bundle `<reapack>` entries did not list the metapackage file itself, so the
+  metapackage `.lua` was not part of its own package. Added as a `<source file=...>`
+  without `main` (confirmed against `ReaPack::Index::Source#make_node`: `main` means
+  *Action List section*, sibling files carry no `main`).
+- Confirmed `main="main"` on every runnable script's own source is correct (it means
+  "register in the main Action List section"), and that URL-encoded/normalised URLs
+  are what `reapack-index` emits.
+- **CI hardened**: `index.xml` validation now also checks that every `<source>` URL
+  resolves to a file in the repository and that each package version matches its
+  script's `@version` header — the two failures that let the stale index through.
+  The Lua step was changed from `for f in $(git ls-files)` to a `while read` loop so
+  paths with spaces cannot break it.
+
+## 5. Notes / observations (not changed)
+
+- The theme writer emits `[theme]` / `[color theme]` keys whose spelling is not
+  validated against REAPER's actual `.ReaperTheme` schema here. It writes a file and
+  reports the path; if REAPER ignores unknown keys, the file is harmless but the
+  colours will not change. Worth a manual check in TEST_CASES TC-ST-01.
+- The smart-tool engine cannot set the mouse *cursor shape* — ReaScript has no such
+  API. It is now documented as a tool-resolution aid rather than a cursor changer.
+- `SGM_Utils.lua` and `rule-of-30-plugin-presets.lua` are intentionally not indexed
+  as separate packages (bundles carry them), so `@noindex` on both is correct.
+- `Utils.JSON.parse` is deliberately small (numbers, strings, arrays, objects,
+  booleans, null). It is not a drop-in for arbitrary JSON (no `\uXXXX` handling).

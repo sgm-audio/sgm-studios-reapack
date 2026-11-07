@@ -1,7 +1,13 @@
 -- @description Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting
 -- @author Scott Mills
--- @version 1.0.0
+-- @version 1.0.1
 -- @changelog
+--   1.0.1 (2026-11-07)
+--     + Fix: stock limiter is "ReaLimit", not "ReaLimiter" (limiter was never inserted)
+--     + Fix: ReaEQ high-pass now uses the documented TrackFX_SetEQParam API instead of
+--       writing raw normalized values into the wrong parameter indices
+--     + Fix: ReaComp/ReaLimit parameters are located by name instead of hard-coded indices
+--     + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants that the docs always promised
 --   1.0.0 (2026-06-02)
 --     + Initial release
 -- @provides
@@ -29,83 +35,125 @@
 --   - LIMIT_CEIL = -1.0: limiter ceiling (dBTP)
 --
 --   **Edge cases handled:**
---   - Existing FX: prompts before clearing
---   - Cancel dialog: no changes made, no undo point created
---   - Multiple runs: stacks FX (intentional for A/B comparison)
+--   - Existing FX: prompts before clearing (answer No/Cancel = no changes, no undo point)
+--   - Existing FX + "Yes": the old chain is replaced, not stacked
+--   - A stock plug-in that is missing/unavailable is reported in the console
+--     instead of aborting the whole chain
 
--- REAPER Auto Mastering Tool
--- Simple mastering chain using built-in plugins
+-- USER SETTINGS ---------------------------------------------------------------
+local HPF_FREQ   = 30      -- high-pass filter frequency (Hz)
+local COMP_THRESH = -18    -- compressor threshold (dB)
+local COMP_RATIO = 2       -- compressor ratio (x:1)
+local COMP_ATTACK = 10     -- compressor attack (ms)
+local COMP_RELEASE = 100   -- compressor release (ms)
+local LIMIT_CEIL = -1.0    -- limiter ceiling (dBTP)
+-- END USER SETTINGS -----------------------------------------------------------
 
 local function msg(m)
     reaper.ShowConsoleMsg(tostring(m) .. "\n")
 end
 
+-- Find a plug-in parameter index by (case-insensitive) name fragment.
+-- Returns nil when the plug-in has no parameter matching the fragment.
+local function find_param(track, fx, fragment)
+    local target = fragment:lower()
+    for i = 0, reaper.TrackFX_GetNumParams(track, fx) - 1 do
+        local _, name = reaper.TrackFX_GetParamName(track, fx, i, "")
+        if name and name:lower():find(target, 1, true) then
+            return i
+        end
+    end
+    return nil
+end
+
+-- Set a parameter in the plug-in's own (denormalized) units.
+local function set_param_real(track, fx, fragment, value)
+    local idx = find_param(track, fx, fragment)
+    if idx then
+        reaper.TrackFX_SetParam(track, fx, idx, value)
+        return true
+    end
+    msg("  ! Could not find a '" .. fragment .. "' parameter")
+    return false
+end
+
 local function apply_mastering_chain()
-    -- Get master track
     local master_track = reaper.GetMasterTrack(0)
     if not master_track then
         msg("ERROR: Could not get master track")
         return
     end
-    
-    msg("Applying mastering chain...")
-    
+
     -- Confirm before clearing existing FX
     local fx_count = reaper.TrackFX_GetCount(master_track)
     if fx_count > 0 then
-        local choice = reaper.MB("Master track has " .. fx_count .. " existing FX. Clear them and apply mastering chain?", "Auto Master", 4)
-        if choice ~= 6 then return end
+        local choice = reaper.MB(
+            "Master track has " .. fx_count .. " existing FX. Clear them and apply mastering chain?",
+            "Auto Master", 4)
+        if choice ~= 6 then
+            msg("Cancelled — no changes made.")
+            return
+        end
     end
-    
+
+    msg("Applying mastering chain...")
+
     reaper.PreventUIRefresh(1)
     reaper.Undo_BeginBlock()
-    
-    -- Clear existing FX
+
+    -- Clear existing FX (highest index first so indices stay valid)
     for i = fx_count - 1, 0, -1 do
         reaper.TrackFX_Delete(master_track, i)
     end
-    
-    -- Add High Pass Filter to clean sub-rumble
-    -- Note: TrackFX_AddByName 4th param = -1 means create new instance
-    local highpass_idx = reaper.TrackFX_AddByName(master_track, "ReaEQ", false, -1)
-    if highpass_idx >= 0 then
-        -- Configure high pass at 30Hz
-        reaper.TrackFX_SetParam(master_track, highpass_idx, 0, 0.0) -- Band 1
-        reaper.TrackFX_SetParam(master_track, highpass_idx, 1, 3) -- High pass
-        reaper.TrackFX_SetParam(master_track, highpass_idx, 2, 30.0 / 20000.0) -- 30Hz frequency
-        reaper.TrackFX_SetParam(master_track, highpass_idx, 3, 0.7) -- Q factor
-        msg("  ✓ High Pass Filter (30Hz) added")
+
+    -- 1. High-pass filter to clean sub-rumble.
+    -- TrackFX_AddByName(..., instantiate = -1) always creates a new instance.
+    local hp_idx = reaper.TrackFX_AddByName(master_track, "ReaEQ", false, -1)
+    if hp_idx >= 0 then
+        -- ReaEQ band parameters must be set through the dedicated EQ API;
+        -- the raw parameter list is not laid out as band/type/freq/Q.
+        local ok = reaper.TrackFX_SetEQParam(
+            master_track, hp_idx,
+            0,   -- bandtype 0 = high-pass
+            0,   -- bandidx: first high-pass band
+            0,   -- paramtype 0 = frequency
+            HPF_FREQ,
+            false) -- isnorm = false -> value is in Hz
+        reaper.TrackFX_SetEQBandEnabled(master_track, hp_idx, 0, 0, true)
+        if ok then
+            msg(string.format("  ✓ High Pass Filter (%.0f Hz) added", HPF_FREQ))
+        else
+            msg("  ! ReaEQ added but the high-pass band could not be configured")
+        end
+    else
+        msg("  ! ReaEQ not available — high-pass filter skipped")
     end
-    
-    -- Add Compressor for glue
+
+    -- 2. Bus compressor for glue
     local comp_idx = reaper.TrackFX_AddByName(master_track, "ReaComp", false, -1)
     if comp_idx >= 0 then
-        -- Configure compressor
-        reaper.TrackFX_SetParam(master_track, comp_idx, 0, -10.0 / 60.0) -- Threshold -10dB
-        reaper.TrackFX_SetParam(master_track, comp_idx, 1, 4.0 / 20.0) -- Ratio 4:1
-        reaper.TrackFX_SetParam(master_track, comp_idx, 2, 10.0 / 5000.0) -- Attack 10ms
-        reaper.TrackFX_SetParam(master_track, comp_idx, 3, 50.0 / 5000.0) -- Release 50ms
-        reaper.TrackFX_SetParam(master_track, comp_idx, 4, 0.0) -- Knee
-        reaper.TrackFX_SetParam(master_track, comp_idx, 5, 0.0) -- Wet (100%)
+        set_param_real(master_track, comp_idx, "Threshold", COMP_THRESH)
+        set_param_real(master_track, comp_idx, "Ratio", COMP_RATIO)
+        set_param_real(master_track, comp_idx, "Attack", COMP_ATTACK)
+        set_param_real(master_track, comp_idx, "Release", COMP_RELEASE)
         msg("  ✓ Compressor (Glue) added")
+    else
+        msg("  ! ReaComp not available — compression skipped")
     end
-    
-    -- Add Limiter for brickwall protection
-    local limit_idx = reaper.TrackFX_AddByName(master_track, "ReaLimiter", false, -1)
+
+    -- 3. Brickwall limiter. The stock plug-in is called ReaLimit.
+    local limit_idx = reaper.TrackFX_AddByName(master_track, "ReaLimit", false, -1)
     if limit_idx >= 0 then
-        -- Configure limiter
-        reaper.TrackFX_SetParam(master_track, limit_idx, 0, -1.0 / 60.0) -- Ceiling -1dB
-        reaper.TrackFX_SetParam(master_track, limit_idx, 1, 0.0) -- Release auto
-        reaper.TrackFX_SetParam(master_track, limit_idx, 2, 0.0) -- Output gain
-        msg("  ✓ Limiter (-1dB ceiling) added")
+        set_param_real(master_track, limit_idx, "Ceiling", LIMIT_CEIL)
+        msg(string.format("  ✓ Limiter (%.1f dB ceiling) added", LIMIT_CEIL))
+    else
+        msg("  ! ReaLimit not available — limiting skipped")
     end
-    
+
     reaper.Undo_EndBlock("Apply Mastering Chain", -1)
     reaper.PreventUIRefresh(-1)
-    msg("Mastering chain applied successfully!")
+    reaper.UpdateArrange()
+    msg("Mastering chain applied.")
 end
 
--- Run the function (safe to load as library — won't execute unless called directly)
-if reaper.get_action_context then
-    apply_mastering_chain()
-end
+apply_mastering_chain()
