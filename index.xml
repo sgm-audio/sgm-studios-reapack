@@ -17,8 +17,18 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.1.3" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.1.3 (2026-11-07)
+      <version name="1.2.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.2.0 (2026-11-07)
+  + SGM_Utils 1.1.0: Utils.load() so every bundle finds the shared library
+    the same way, plus Utils.fx_normalize() which converts a value in a
+    plug-in's own units (-18 dB, 10 ms) into the 0..1 value TrackFX_SetParam
+    actually takes, by reading the plug-in's formatting back.
+  + SGM_auto_master 1.1.0: compressor and limiter settings now land on the
+    documented values (they were being written as if normalized), the ReaEQ
+    high-pass passes its isnorm argument, and the console reports settings it
+    could not apply instead of claiming the chain is configured.
+  + SGM_route_mix_bus 1.1.0: uses the shared message and colour helpers.
+1.1.3 (2026-11-07)
   + daw-discovery-analyzer 1.0.4: no non-existent API calls
     (GetProjectSampleRate / GetInputChannelCount / GetOutputChannelCount),
     CPU reports now open REAPER's Performance Meter, and the config monitor
@@ -39,13 +49,13 @@
   + Reorganised for ReaPack: kept to the utilities I use day to day
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_route_mix_bus.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_auto_master.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/daw-discovery-analyzer.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_Utils.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_Utils.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_CoreUtilities_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_FieldyBagToggle.lua" type="script" desc="Toggle between Fieldy (Korn) and Dimebag (Pantera) bass FX chains on the selected track">
@@ -68,7 +78,7 @@
   + Fix: single selected-track lookup (main() and the toggle shared it)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_FieldyBagToggle.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_auto_master.lua" type="script" desc="Auto-mastering chain using REAPER stock plugins: EQ, compression, saturation, and limiting">
@@ -84,8 +94,19 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.1 (2026-11-07)
+      <version name="1.1.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.1.0 (2026-11-07)
+  + Fix: compressor / limiter values were written in engineering units
+    (-18 dB, 10 ms) into TrackFX_SetParam, which takes a 0..1 normalized
+    value, so the attack landed nowhere near 10 ms. Values now go through
+    Utils.fx_normalize(), which reads the plug-in's own formatting back and
+    is skipped (with a message) if the plug-in cannot be mapped.
+  + Fix: TrackFX_SetEQParam takes 7 arguments; `isnorm` was omitted, so the
+    high-pass frequency was passed as if it were normalized.
+  + Add: uses the shared SGM_Utils library when it is installed (message
+    output, dB helpers, parameter mapping) and falls back to local helpers
+    when it is not, so this still runs as a standalone file.
+1.0.1 (2026-11-07)
   + Fix: stock limiter is "ReaLimit", not "ReaLimiter" (limiter was never inserted)
   + Fix: ReaEQ high-pass now uses the documented TrackFX_SetEQParam API instead of
     writing raw normalized values into the wrong parameter indices
@@ -93,7 +114,7 @@
   + Add: the HPF_FREQ / COMP_* / LIMIT_CEIL constants that the docs always promised
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_auto_master.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_auto_master.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_reaper_ultra_hd_smart_tools.lua" type="script" desc="4K-friendly REAPER theme generator with WCAG contrast checking and an optional smart-tool cursor engine">
@@ -131,7 +152,7 @@
   + Top Shelf audit: localize functions, remove _G exports (no global leaks)
 1.0.0 (2026-06-02)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_reaper_ultra_hd_smart_tools.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_route_mix_bus.lua" type="script" desc="Route all tracks through a Mix Bus, then Mix Bus to Master">
@@ -146,8 +167,12 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.1" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.1 (2026-11-07)
+      <version name="1.1.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[1.1.0 (2026-11-07)
+  + Add: uses the shared SGM_Utils library when it is installed (message
+    output, native track colours) and falls back to local helpers when it
+    is not, so this still runs as a standalone file.
+1.0.1 (2026-11-07)
   + Fix: selection is now honoured (previously the "select the tracks to route"
     workflow silently routed *every* top-level track)
   + Fix: nested tracks inside folders are no longer skipped (only folder parents
@@ -158,7 +183,7 @@
   + Add: console message when no tracks are selected
 1.0.0 (2026-06-03)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/SGM_route_mix_bus.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/SGM_route_mix_bus.lua</source>
       </version>
     </reapack>
     <reapack name="daw-discovery-analyzer.lua" type="script" desc="Profile the REAPER environment: plugins, routing graph, track structure, and system specs">
@@ -204,7 +229,7 @@
   + System profiling: CPU, RAM, sample rate, buffer size
   + Plugin discovery and categorization
   + Signal flow graph generation exported to console]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/SGM-Essentials/daw-discovery-analyzer.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/SGM-Essentials/daw-discovery-analyzer.lua</source>
       </version>
     </reapack>
   </category>
@@ -223,8 +248,22 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.3" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.3 (2026-11-07)
+      <version name="2.0.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[2.0.0 (2026-11-07)
+  + phase-alignment-tool 2.0.0: rewritten. It now measures before it moves,
+    reports per-track offset/correlation/confidence, detects inverted
+    polarity, refuses items it cannot compare (MIDI takes, playrate, silence,
+    rate mismatch, too-short items) instead of moving them, and restores the
+    cursor and time selection. Sample-exact against known offsets in tests.
+  + session-builder 2.0.0: tempo actually set (9-argument
+    SetTempoTimeSigMarker, verified by read-back), plugin chains no longer
+    duplicate, master chain no longer stacks, and the chain buttons now apply
+    the real preset values instead of adding bare plugins.
+  + rule-of-30-plugin-presets 3.0.0: settings are written in the units the
+    plug-ins display and converted at apply time, so "10 ms attack" is 10 ms.
+  + SGM_Utils 1.1.0 is used when installed (shared loader, message and
+    parameter helpers) with local fallbacks, so each script still runs alone.
+1.0.3 (2026-11-07)
   + phase-alignment-tool 1.0.3: project sample rate comes from
     GetAudioDeviceInfo("SRATE") instead of a non-existent API function
 1.0.2 (2026-11-07)
@@ -239,10 +278,10 @@
     phase-alignment-tool 1.0.1, plugin-presets 1.0.1)
 1.0.0 (2026-05-23)
   + Initial release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/rule-of-30-plugin-presets.lua</source>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/phase-alignment-tool.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/phase-alignment-tool.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/SGM_RuleOf30_Bundle.lua</source>
       </version>
     </reapack>
     <reapack name="phase-alignment-tool.lua" type="script" desc="Auto-align quad-tracked DI guitars by transient analysis before amp processing">
@@ -257,29 +296,39 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.3" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.3 (2026-11-07)
+      <version name="2.0.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[2.0.0 (2026-11-07)
+  + Rewrite: alignment is now measured by normalized cross-correlation of the
+    actual audio, not by "where the first sample above 0.3 happens to be".
+    The old method reported a first-threshold crossing, which moves with the
+    material's gain and misses anything played softly.
+  + Fix: the analysis buffer was indexed as frame*channels; reaper.new_array
+    is 1-based, so every take was measured one frame early.
+  + Fix: tracks with several items only had their first item examined, and a
+    silent first item made the track look unalignable.
+  + Fix: the correlation analyser compared item *positions* and called that
+    phase, which says nothing about the audio inside the items.
+  + Fix: every track was nudged to the earliest transient, so a single
+    detection error dragged the whole group. Tracks are now aligned to one
+    explicit reference track.
+  + Add: polarity check (reports an inverted track instead of aligning it to
+    the wrong lobe), confidence reporting, and a refusal to move a track when
+    the correlation is too weak to mean anything.
+  + Add: settings persist between runs (ExtState) and option 7 edits them.
+  + Add: uses SGM_Utils when it is installed, falls back to local helpers.
+1.0.3 (2026-11-07)
   + Fix: reaper.GetProjectSampleRate() is not a REAPER API function (verified
     against the REAPER 7.83 SDK header); the project/device rate now comes
     from GetAudioDeviceInfo("SRATE")
 1.0.2 (2026-11-07)
   + Fix: early exits (too few tracks / no transients) left UIRefresh disabled
     and an undo block open — validation now happens before any begin/refresh
-  + Fix: transient detection read a multi-channel buffer as if it were mono,
-    so stereo DI takes were analysed from interleaved garbage; it now walks
-    channel 1 frame by frame
-  + Fix: hard-coded 48 kHz in the reports — uses the project sample rate
-  + Fix: the reported peak level stopped accumulating once a transient was
-    found; it is now the true peak of the analysis window
-  + Clarify: "alignment_precision" is 0.1 ms, not one sample
+  + Fix: transient detection read a multi-channel buffer as if it were mono
 1.0.1 (2026-10-08)
   + Top Shelf audit: replace gfx.showmenu with GetUserInputs
 1.0.0 (2026-05-23)
-  + Initial release
-  + Transient onset detection on selected DI tracks
-  + Sample-accurate offset calculation and item nudge
-  + Designed for quad-tracked guitars in heavy metal production]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/phase-alignment-tool.lua</source>
+  + Initial release]]></changelog>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/phase-alignment-tool.lua</source>
       </version>
     </reapack>
     <reapack name="rule-of-30-session-builder.lua" type="script" desc="Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density">
@@ -295,8 +344,24 @@
 }
 ]]></description>
       </metadata>
-      <version name="1.0.2" author="Scott Mills" time="2026-11-07T12:00:00Z">
-        <changelog><![CDATA[1.0.2 (2026-11-07)
+      <version name="2.0.0" author="Scott Mills" time="2026-11-07T12:00:00Z">
+        <changelog><![CDATA[2.0.0 (2026-11-07)
+  + Fix (fatal): SetTempoTimeSigMarker() takes 9 arguments and was called
+    with 8, so the tempo landed in the beatpos slot — every session built at
+    ~4 BPM with a 95/110 time signature. The tempo is now read back with
+    Master_GetTempo() and the build aborts if it did not take.
+  + Fix: plugin chains duplicating. TrackFX_AddByName(..., -1) inserts a new
+    instance every run, so options 2-5 three times gave three chains. Chains
+    now skip an FX the track already has.
+  + Fix: the master FX chain stacked a new ReaComp + ReaEQ on every build.
+  + Add: the Rule of 30 preset library (rule-of-30-plugin-presets.lua) is now
+    actually used — options 2-5 apply real stock-FX settings by parameter
+    name, instead of adding bare plugins with no configuration.
+  + Add: SGM_Utils is used when installed (shared trim/db/clamp helpers).
+  + Add: every chain action reports which plugins it skipped or could not find.
+  + Fix: the console claimed "Added chain: X" even when TrackFX_AddByName
+    returned -1.
+1.0.2 (2026-11-07)
   + Fix (fatal): the plugin-aware builder called the `addFX` local before it
     was declared, so "Build Session" with Compact Mode off raised
     "attempt to call a nil value (global 'addFX')"
@@ -320,8 +385,8 @@
   + 48+ track template: quad guitars, double bass, full drum kit, orchestral layers
   + Drop Bb tuning, 95-110 BPM range
   + Bus architecture with parallel compression sends]]></changelog>
-        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/rule-of-30-session-builder.lua</source>
-        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/894f50a56633ea60838e2193b3ff2e00b46c6982/Rule-of-30/rule-of-30-plugin-presets.lua</source>
+        <source main="main">https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-session-builder.lua</source>
+        <source>https://github.com/sgm-audio/sgm-studios-reapack/raw/6041892cb2526f59b60b75966974517aaccc46bb/Rule-of-30/rule-of-30-plugin-presets.lua</source>
       </version>
     </reapack>
   </category>

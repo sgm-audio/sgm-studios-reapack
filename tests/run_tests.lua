@@ -59,12 +59,33 @@ test("configures the ReaEQ high-pass through the EQ API", function()
   eq(r._master.fx[1].eq_enabled, true, "band enabled")
 end)
 
-test("uses the documented threshold and ceiling values", function()
+test("writes parameter values that read back as the documented ones", function()
   local r = mock.new()
   mock.run_script(r, ESS .. "SGM_auto_master.lua")
-  -- ReaComp: Threshold is parameter 1 in the mock's name table
-  eq(r._master.fx[2].params[1], -18, "compressor threshold")
-  eq(r._master.fx[3].params[1], -1.0, "limiter ceiling")
+  local master = r._master
+
+  -- These used to assert the raw stored number, which is how the bug survived:
+  -- TrackFX_SetParam takes 0..1, so -18 was silently some other threshold.
+  -- Read the value back through the plug-in's own formatter instead.
+  local function reads_back(fx_index, param_index)
+    local stored = master.fx[fx_index + 1].params[param_index]
+    if stored == nil then return nil, "nothing written" end
+    if stored < 0 or stored > 1 then
+      return nil, "stored " .. tostring(stored) .. " is not a normalized value"
+    end
+    local ok, text = r.TrackFX_FormatParamValueNormalized(
+      master, fx_index, param_index, stored)
+    if not ok then return nil, "the plug-in could not format the value" end
+    return tonumber(text:match("[-+]?%d*%.?%d+")), text
+  end
+
+  local threshold = reads_back(1, 1)
+  eq(math.abs(threshold + 18) <= 1.0, true,
+    "compressor threshold should read back -18 dB, got " .. tostring(threshold))
+
+  local ceiling = reads_back(2, 1)
+  eq(math.abs(ceiling + 1.0) <= 0.2, true,
+    "limiter ceiling should read back -1.0 dB, got " .. tostring(ceiling))
 end)
 
 test("cancelling the dialog leaves the project untouched", function()
@@ -133,6 +154,21 @@ test("routes only the selected tracks", function()
   eq(#b.sends, 1, "B routed")
   eq(#c.sends, 0, "C (unselected) not routed")
   eq(c.mainsend, 1, "C keeps its master send")
+end)
+
+test("colours the mix bus with the configured RGB", function()
+  local r = mock.new()
+  local a = mock.add_track(r, "A")
+  mock.select(r, { a })
+  eq(mock.run_script(r, ESS .. "SGM_route_mix_bus.lua"), nil, "script error")
+  local bus
+  for _, tr in ipairs(r._tracks) do
+    if tr.name == "Mix Bus" then bus = tr end
+  end
+  eq(bus ~= nil, true, "mix bus created")
+  -- MIX_BUS_COLOR = { 255, 180, 50 } -> 0x1000000 | 0xFFB432
+  local expected = 0x1000000 | (255 * 65536 + 180 * 256 + 50)
+  eq(bus and bus.color, expected, "mix bus colour")
 end)
 
 test("does not duplicate an existing send", function()

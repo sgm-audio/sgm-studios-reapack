@@ -1,7 +1,23 @@
 -- @description Build a 48-track industrial/heavy metal session: Drop Bb, 95-110 BPM, massive density
 -- @author Scott Mills
--- @version 1.0.2
+-- @version 2.0.0
 -- @changelog
+--   2.0.0 (2026-11-07)
+--     + Fix (fatal): SetTempoTimeSigMarker() takes 9 arguments and was called
+--       with 8, so the tempo landed in the beatpos slot — every session built at
+--       ~4 BPM with a 95/110 time signature. The tempo is now read back with
+--       Master_GetTempo() and the build aborts if it did not take.
+--     + Fix: plugin chains duplicating. TrackFX_AddByName(..., -1) inserts a new
+--       instance every run, so options 2-5 three times gave three chains. Chains
+--       now skip an FX the track already has.
+--     + Fix: the master FX chain stacked a new ReaComp + ReaEQ on every build.
+--     + Add: the Rule of 30 preset library (rule-of-30-plugin-presets.lua) is now
+--       actually used — options 2-5 apply real stock-FX settings by parameter
+--       name, instead of adding bare plugins with no configuration.
+--     + Add: SGM_Utils is used when installed (shared trim/db/clamp helpers).
+--     + Add: every chain action reports which plugins it skipped or could not find.
+--     + Fix: the console claimed "Added chain: X" even when TrackFX_AddByName
+--       returned -1.
 --   1.0.2 (2026-11-07)
 --     + Fix (fatal): the plugin-aware builder called the `addFX` local before it
 --       was declared, so "Build Session" with Compact Mode off raised
@@ -48,6 +64,96 @@
 
 reaper.ClearConsole()
 reaper.ShowConsoleMsg("=== RULE OF 30 SESSION BUILDER ===\n\n")
+
+-- ===================================
+-- SHARED LIBRARIES
+-- ===================================
+-- SGM_Utils (SGM-Essentials bundle) and the Rule of 30 presets ship next to this
+-- script. Both look in the script's own directory first, then in the layout a
+-- ReaPack install produces, so the builder works whether it was installed from
+-- ReaPack or copied by hand.
+-- Where this file lives, so the shared libraries can be found next to it.
+-- get_action_context is authoritative inside REAPER; the trailing
+-- `select(2, ...)` from pcall is what actually carries the filename, and
+-- debug.getinfo is only a fallback because its `source` is unreliable when a
+-- script is loaded by a wrapper (it can come back as "=[C]").
+local function scriptDirectory()
+  local ok, _, script_filename = pcall(reaper.get_action_context)
+  if ok and type(script_filename) == "string" and script_filename ~= "" then
+    local dir = script_filename:match("^(.*[/\\])")
+    if dir then return dir end
+  end
+  local info_ok, source = pcall(debug.getinfo, 1, "S")
+  local path = info_ok and source and source.source or ""
+  return (path:gsub("^@", "")):match("^(.*[/\\])") or ""
+end
+
+-- Bootstrapping SGM_Utils has to happen by path (we do not have the library
+-- yet); everything after that goes through it.
+local function bootstrapUtils()
+  local dir = scriptDirectory()
+  local resource = reaper.GetResourcePath()
+  local candidates = {
+    dir .. "SGM_Utils.lua",
+    dir .. "../SGM-Essentials/SGM_Utils.lua",
+    resource .. "/Scripts/SGM Studios/SGM-Essentials/SGM_Utils.lua",
+    resource .. "/Scripts/SGM_Scripts/SGM-Essentials/SGM_Utils.lua",
+  }
+  for _, path in ipairs(candidates) do
+    local chunk = loadfile(path)
+    if chunk then
+      local ok, lib = pcall(chunk)
+      if ok and type(lib) == "table" then return lib, path end
+    end
+  end
+  return nil, nil
+end
+
+local Utils = bootstrapUtils()
+
+-- Locate a library that ships next to this script or in either bundle folder.
+local function loadLibrary(filename)
+  local dir = scriptDirectory()
+  local resource = reaper.GetResourcePath()
+  local candidates = {
+    dir .. filename,
+    resource .. "/Scripts/SGM Studios/Rule-of-30/" .. filename,
+    resource .. "/Scripts/SGM Studios/SGM-Essentials/" .. filename,
+    resource .. "/Scripts/SGM_Scripts/Rule-of-30/" .. filename,
+    resource .. "/Scripts/SGM_Scripts/SGM-Essentials/" .. filename,
+  }
+  for _, path in ipairs(candidates) do
+    local chunk = loadfile(path)
+    if chunk then
+      local ok, lib = pcall(chunk)
+      if ok and type(lib) == "table" then return lib, path end
+    end
+  end
+  return nil, nil
+end
+
+-- Use the library's own loader when we have it, so the search order is shared.
+local utils_path
+if Utils and Utils.load then
+  local lib, path = Utils.load(scriptDirectory())
+  if lib then Utils, utils_path = lib, path end
+end
+
+local Presets, presets_path = loadLibrary("rule-of-30-plugin-presets.lua")
+
+-- The preset library needs fx_normalize() to turn "-18 dB" into a 0..1 value.
+if Presets then Presets.Utils = Utils end
+
+local function msg(text)
+  if Utils and Utils.msg then return Utils.msg(text) end
+  reaper.ShowConsoleMsg(tostring(text) .. "\n")
+end
+
+reaper.ShowConsoleMsg(Utils and "Shared library: SGM_Utils loaded\n"
+  or "Shared library: SGM_Utils not found (using local fallbacks)\n")
+reaper.ShowConsoleMsg(Presets and ("Presets: " .. tostring(presets_path) .. "\n")
+  or "Presets: rule-of-30-plugin-presets.lua not found (chains will add bare plugins)\n")
+reaper.ShowConsoleMsg("\n")
 
 -- ===================================
 -- CONFIGURATION
@@ -233,18 +339,47 @@ local function getBestPlugin(category, keywords)
 end
 
 -- Defined before addSmartFX so the plugin-aware builder can call it.
+-- Idempotent: instantiate = -1 inserts a NEW instance every call, which is how
+-- running "Drum Chains" three times produced three chains. Check first.
 local function addFX(track, fx_name)
+  local existing = reaper.TrackFX_AddByName(track, fx_name, false, 0)
+  if existing and existing >= 0 then
+    return existing, false
+  end
   local fx_index = reaper.TrackFX_AddByName(track, fx_name, false, -1)
-  return fx_index
+  if not fx_index or fx_index < 0 then
+    msg("  ! could not add " .. fx_name .. " (not installed?)")
+    return nil, false
+  end
+  return fx_index, true
 end
 
 local function addSmartFX(track, category, keywords)
   local plugin = getBestPlugin(category, keywords)
-  if plugin then
-    addFX(track, plugin)
-    return true
+  if not plugin then return false end
+  local _, added = addFX(track, plugin)
+  return added
+end
+
+-- Apply the Rule of 30 preset for a track name (if the presets file loaded).
+-- Returns the number of plugins actually added and a list of the ones skipped
+-- because they were already there. Reports anything that would not resolve —
+-- a preset that silently does nothing is worse than no preset.
+local function applyChain(track, label, chain)
+  if not chain then return 0, {} end
+  -- The preset library owns the mapping (engineering value -> 0..1) because it
+  -- also owns the values, and it reports anything it could not set.
+  local added, skipped, problems = Presets.apply(track, label, chain, addFX)
+  for _, problem in ipairs(problems) do
+    msg("      ! " .. problem)
   end
-  return false
+  return added, skipped
+end
+
+-- Preset for a track name, if one is defined for it.
+local function applyPreset(track, track_name)
+  if not Presets then return 0, {} end
+  return applyChain(track, track_name, Presets.forTrack(track_name))
 end
 
 -- ===================================
@@ -349,9 +484,10 @@ local function endUndo(action_name)
   reaper.UpdateArrange()
 end
 
+-- Builds the session structure. Undo/UI-refresh is owned by the caller, so
+-- every exit path (including the tempo guard below) leaves the block open for
+-- the caller to close exactly once.
 local function buildRuleOf30Session()
-
-  beginUndo()
 
   -- Set project properties
   reaper.GetSetProjectInfo(0, "PROJECT_SRATE", CONFIG.sample_rate, true)
@@ -360,13 +496,30 @@ local function buildRuleOf30Session()
   -- Tempo: update the first tempo marker if one exists, otherwise create it.
   -- SetTempoTimeSigMarker(..., -1, -1, ...) inserts a *new* marker at the edit
   -- cursor every run, which frees the tempo map instead of setting the project tempo.
+  -- SetTempoTimeSigMarker(proj, ptidx, timepos, measurepos, beatpos, bpm,
+  --                       timesig_num, timesig_denom, lineartempo)
+  -- Nine arguments. Passing eight shifts bpm into beatpos and leaves bpm at 0,
+  -- which is how every previous build came out at ~4 BPM.
+  local tempo_set
   if reaper.CountTempoTimeSigMarkers(0) > 0 then
-    reaper.SetTempoTimeSigMarker(0, 0, -1, -1, CONFIG.bpm,
+    tempo_set = reaper.SetTempoTimeSigMarker(0, 0, -1, -1, -1, CONFIG.bpm,
       CONFIG.time_signature_num, CONFIG.time_signature_den, false)
   else
-    reaper.SetTempoTimeSigMarker(0, -1, 0, -1, CONFIG.bpm,
+    tempo_set = reaper.SetTempoTimeSigMarker(0, -1, 0, -1, -1, CONFIG.bpm,
       CONFIG.time_signature_num, CONFIG.time_signature_den, true)
   end
+
+  -- Do not trust the return value alone: read the tempo back and refuse to
+  -- build a 53-track session at the wrong speed.
+  local actual_bpm = reaper.Master_GetTempo()
+  if not tempo_set or math.abs(actual_bpm - CONFIG.bpm) > 0.5 then
+    msg(string.format("❌ Could not set the project tempo (asked for %.1f BPM, REAPER reports %.1f).",
+      CONFIG.bpm, actual_bpm))
+    msg("   Nothing was built. Move the edit cursor or remove tempo markers and retry.")
+    return false
+  end
+  msg(string.format("Tempo set to %.1f BPM (%d/%d)", actual_bpm,
+    CONFIG.time_signature_num, CONFIG.time_signature_den))
 
   reaper.ShowConsoleMsg("Building session structure...\n")
   
@@ -564,10 +717,16 @@ local function buildRuleOf30Session()
   -- The master track must always keep its master/parent send enabled.
   reaper.SetMediaTrackInfo_Value(master_track, "B_MAINSEND", 1)
 
-  -- Add master bus FX chain (placeholders - user will swap with actual plugins)
-  -- These are generic names that work across platforms
-  addFX(master_track, "ReaComp")  -- Placeholder for SSL Bus Comp
-  addFX(master_track, "ReaEQ")    -- Placeholder for final shaping
+  -- Master chain comes from the preset library so it stays in one place.
+  if Presets and Presets.buses and Presets.buses.master then
+    local added = applyChain(master_track, "MASTER", Presets.buses.master)
+    if added > 0 then
+      reaper.ShowConsoleMsg(string.format("  Master bus: +%d FX\n", added))
+    end
+  else
+    addFX(master_track, "ReaComp")
+    addFX(master_track, "ReaEQ")
+  end
 
   reaper.ShowConsoleMsg("\n✅ Session structure complete!\n")
   reaper.ShowConsoleMsg("Total tracks in project: " .. reaper.CountTracks(0) .. "\n")
@@ -577,8 +736,6 @@ local function buildRuleOf30Session()
     reaper.ShowConsoleMsg("  to build the full skeleton with stock FX.\n")
   end
   reaper.ShowConsoleMsg("\n")
-
-  endUndo("Create Rule of 30 Session")
 
   return true
 end
@@ -650,123 +807,68 @@ end
 -- PLUGIN CHAIN PRESETS
 -- ===================================
 
-local function addDrumChains()
-  reaper.ShowConsoleMsg("\n=== ADDING DRUM PROCESSING CHAINS ===\n")
+-- Apply the preset chains for one section of the session.
+-- `section` is the folder name the builder creates ("DRUMS", "BASS", ...).
+-- Tracks are matched through the preset table, not by a second hand-written list
+-- of names, so adding a track to the builder and a preset to the library is all
+-- that is needed for it to be processed.
+local function applyChainsForSection(section_label)
+  msg("\n=== ADDING " .. section_label .. " CHAINS ===")
 
+  if not Presets then
+    msg("  ! rule-of-30-plugin-presets.lua was not found next to this script.")
+    msg("    Reinstall the Rule of 30 bundle, then run this again.")
+    return
+  end
+
+  -- Walk the tracks, remembering which section folder we are inside.
+  local current_section, applied, already = nil, 0, 0
   for i = 0, reaper.CountTracks(0) - 1 do
     local track = reaper.GetTrack(0, i)
     local _, name = reaper.GetTrackName(track)
+    local is_folder = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH") == 1
 
-    -- Kick In Chain
-    if name:find("Kick In") then
-      addFX(track, "ReaGate")
-      addFX(track, "ReaEQ")
-      reaper.ShowConsoleMsg("✓ Added chain: Kick In\n")
-
-    -- Kick Out Chain
-    elseif name:find("Kick Out") then
-      addFX(track, "ReaComp")
-      addFX(track, "ReaEQ")
-      reaper.ShowConsoleMsg("✓ Added chain: Kick Out\n")
-
-    -- Snare Top Chain
-    elseif name:find("Snare Top") then
-      addFX(track, "ReaGate")
-      addFX(track, "ReaComp")
-      addFX(track, "ReaEQ")
-      reaper.ShowConsoleMsg("✓ Added chain: Snare Top\n")
-
-    -- Room Mono Chain (Crushing)
-    elseif name:find("Room Mono") then
-      addFX(track, "ReaComp")  -- Smash it!
-      reaper.ShowConsoleMsg("✓ Added chain: Room Mono Crush\n")
+    if is_folder then
+      local matched = false
+      for _, label in ipairs({ "DRUMS", "BASS", "GUITARS", "VOCALS", "GLITCH" }) do
+        if name:find(label, 1, true) then
+          current_section = label
+          matched = true
+        end
+      end
+      if not matched then
+        -- A nested folder ("KICK", "SNARE", ...) keeps the section it is in.
+      end
     end
+
+    local in_section = (current_section == section_label)
+
+    if in_section and not is_folder then
+      local added, skipped = applyPreset(track, name)
+      if added > 0 then
+        msg(string.format("  ✓ %s (+%d FX)", name, added))
+        applied = applied + 1
+      elseif #skipped > 0 then
+        msg(string.format("  · %s already has: %s", name, table.concat(skipped, ", ")))
+        already = already + 1
+      end
+    end
+  end
+
+  if applied == 0 and already == 0 then
+    msg("  No matching tracks found. Is the section built? (Run option 1 first.)")
+  else
+    msg(string.format("  %d track(s) processed, %d already had a chain.",
+      applied, already))
   end
 end
 
-local function addBassChains()
-  reaper.ShowConsoleMsg("\n=== ADDING BASS PROCESSING CHAINS ===\n")
-
-  for i = 0, reaper.CountTracks(0) - 1 do
-    local track = reaper.GetTrack(0, i)
-    local _, name = reaper.GetTrackName(track)
-
-    -- Bass DI (Low pass at 200Hz)
-    if name:find("Bass DI") then
-      addFX(track, "ReaEQ")  -- Low pass
-      addFX(track, "ReaComp")  -- Sidechain comp here!
-      reaper.ShowConsoleMsg("✓ Added chain: Bass DI (add sidechain comp!)\n")
-
-    -- Bass Amp (High pass at 200Hz)
-    elseif name:find("Bass Amp") then
-      addFX(track, "ReaEQ")  -- High pass
-      reaper.ShowConsoleMsg("✓ Added chain: Bass Amp\n")
-
-    -- Bass Fuzz (Distortion + High pass)
-    elseif name:find("Bass Fuzz") then
-      addFX(track, "ReaEQ")  -- High pass at 200Hz
-      reaper.ShowConsoleMsg("✓ Added chain: Bass Fuzz\n")
-
-    -- Bass Synth
-    elseif name:find("Bass Synth") then
-      addFX(track, "ReaComp")  -- Sidechain comp here too!
-      reaper.ShowConsoleMsg("✓ Added chain: Bass Synth (add sidechain comp!)\n")
-    end
-  end
-end
-
-local function addGuitarChains()
-  reaper.ShowConsoleMsg("\n=== ADDING GUITAR CHAINS ===\n")
-
-  for i = 0, reaper.CountTracks(0) - 1 do
-    local track = reaper.GetTrack(0, i)
-    local _, name = reaper.GetTrackName(track)
-
-    -- Rhythm guitars (add amp sim placeholder)
-    if name:find("Rhythm") then
-      addFX(track, "ReaEQ")  -- EQ after amp sim
-      reaper.ShowConsoleMsg("✓ Added chain: " .. name .. " (add Neural DSP here!)\n")
-
-    -- The Scrape (extreme distortion)
-    elseif name:find("Scrape") then
-      addFX(track, "ReaEQ")
-      reaper.ShowConsoleMsg("✓ Added chain: The Scrape\n")
-
-    -- Clean Ambient (reverb/delay)
-    elseif name:find("Clean Ambient") then
-      reaper.ShowConsoleMsg("✓ Ready: Clean Ambient (send to reverb!)\n")
-    end
-  end
-end
-
-local function addVocalChains()
-  reaper.ShowConsoleMsg("\n=== ADDING VOCAL CHAINS ===\n")
-
-  for i = 0, reaper.CountTracks(0) - 1 do
-    local track = reaper.GetTrack(0, i)
-    local _, name = reaper.GetTrackName(track)
-
-    -- Lead Vocal (core chain)
-    if name:find("Lead Vocal") then
-      addFX(track, "ReaComp")
-      addFX(track, "ReaEQ")
-      reaper.ShowConsoleMsg("✓ Added chain: Lead Vocal (add Nectar/pitch correction!)\n")
-
-    -- Demon Layer (pitch shift down)
-    elseif name:find("Demon Layer") then
-      reaper.ShowConsoleMsg("✓ Ready: Demon Layer (add -12st pitch shift!)\n")
-
-    -- Telephonic (band-pass 500-3k)
-    elseif name:find("Telephonic") then
-      addFX(track, "ReaEQ")  -- Band-pass filter
-      reaper.ShowConsoleMsg("✓ Added chain: Telephonic\n")
-
-    -- Whispers (de-esser)
-    elseif name:find("Whisper") then
-      reaper.ShowConsoleMsg("✓ Ready: Whisper (add de-esser!)\n")
-    end
-  end
-end
+-- Thin wrappers so the menu reads clearly; the menu itself wraps each in its
+-- own undo block.
+local function addDrumChains() applyChainsForSection("DRUMS") end
+local function addBassChains() applyChainsForSection("BASS") end
+local function addGuitarChains() applyChainsForSection("GUITARS") end
+local function addVocalChains() applyChainsForSection("VOCALS") end
 
 -- ===================================
 -- MAIN MENU
@@ -790,7 +892,9 @@ local function showMenu()
       .. (CONFIG.compact_mode and "ON (skip tracks with no plugins)" or "OFF"),
       "Rule of 30 Session Builder", 0)
   elseif result == 1 then
-    buildRuleOf30Session()
+    beginUndo()
+    local built = buildRuleOf30Session()
+    endUndo(built and "Create Rule of 30 Session" or "Rule of 30: build aborted")
     reaper.ShowConsoleMsg("\n💡 Next steps:\n")
     reaper.ShowConsoleMsg("   1. Run option 2-5 to add plugin chains\n")
     reaper.ShowConsoleMsg("   2. Run option 6 to setup sidechain compression\n")

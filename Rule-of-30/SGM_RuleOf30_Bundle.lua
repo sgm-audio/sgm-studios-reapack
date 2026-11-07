@@ -1,8 +1,22 @@
 -- @description SGM Studios Rule of 30 heavy metal production bundle: 48-track session, plugin presets, and phase alignment
 -- @author Scott Mills
--- @version 1.0.3
+-- @version 2.0.0
 -- @metapackage
 -- @changelog
+--   2.0.0 (2026-11-07)
+--     + phase-alignment-tool 2.0.0: rewritten. It now measures before it moves,
+--       reports per-track offset/correlation/confidence, detects inverted
+--       polarity, refuses items it cannot compare (MIDI takes, playrate, silence,
+--       rate mismatch, too-short items) instead of moving them, and restores the
+--       cursor and time selection. Sample-exact against known offsets in tests.
+--     + session-builder 2.0.0: tempo actually set (9-argument
+--       SetTempoTimeSigMarker, verified by read-back), plugin chains no longer
+--       duplicate, master chain no longer stacks, and the chain buttons now apply
+--       the real preset values instead of adding bare plugins.
+--     + rule-of-30-plugin-presets 3.0.0: settings are written in the units the
+--       plug-ins display and converted at apply time, so "10 ms attack" is 10 ms.
+--     + SGM_Utils 1.1.0 is used when installed (shared loader, message and
+--       parameter helpers) with local fallbacks, so each script still runs alone.
 --   1.0.3 (2026-11-07)
 --     + phase-alignment-tool 1.0.3: project sample rate comes from
 --       GetAudioDeviceInfo("SRATE") instead of a non-existent API function
@@ -32,10 +46,18 @@ return "SGM Studios Bundle: Rule of 30 Heavy Metal Production"
 --   and metal production in REAPER.
 --
 --   Includes:
---   - rule-of-30-session-builder.lua: builds the full 48+ track session
---   - rule-of-30-plugin-presets.lua: plugin chain reference library (shipped for
---     reading/copying; the session builder does not load it at runtime)
---   - phase-alignment-tool.lua: sample-accurate DI guitar alignment
+--   - rule-of-30-session-builder.lua: builds the full 48+ track session, and
+--     applies the preset chains to it
+--   - rule-of-30-plugin-presets.lua: the chain definitions the builder applies,
+--     written in the units each plug-in displays (-18 dB, 10 ms). Loaded by the
+--     builder at runtime; it is a library, not an action.
+--   - phase-alignment-tool.lua: sample-accurate alignment, which measures every
+--     selected track against the first one before moving anything, and reports
+--     the offset, correlation and confidence for each track
+--
+--   Both the builder and the alignment tool use SGM_Utils.lua from the
+--   Essentials bundle when it is installed, and fall back to local helpers when
+--   it is not, so this bundle works on its own.
 --
 --   Drop Bb tuning. 95-110 BPM. Designed for dense, high-track-count productions
 --   with quad-tracked guitars, double bass, and full orchestral augmentation layers.

@@ -167,6 +167,9 @@ def check_file(path, core, sws, glue):
         body = code[start:end]
         total = balance.get(name, 0)
         for call in re.finditer(r"(?<![.:\w])([A-Za-z_]\w*)\s*\(", body):
+            # `local function foo(` is a definition, not a call to foo.
+            if re.search(r"function\s+$", body[:call.start()]):
+                continue
             callee = call.group(1)
             if callee in block_by_name and callee != name:
                 total += effective(callee, seen)

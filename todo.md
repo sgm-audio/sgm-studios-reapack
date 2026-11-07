@@ -20,7 +20,14 @@ again" is what produced the bugs.
 
 ### 1. Fix the 8 confirmed defects (AUDIT.md §8 A–H)
 
-- [ ] **A. `SGM_auto_master.lua` writes normalized values into every FX param.**
+- [x] **A. `SGM_auto_master.lua` writes normalized values into every FX param.**
+      **DONE (1.1.0).** Values now pass through `Utils.fx_normalize()`, which reads
+      the plug-in's own formatting back to find the 0..1 position; a setting that
+      cannot be mapped is reported and skipped instead of guessed. Verified in
+      `tests/run_tests.lua` by reading each value back through the plug-in's
+      formatter (-18.0 dB, 2.00:1, 10.0 ms, -1.00 dB). The ReaEQ high-pass also
+      gained its missing 7th argument (`isnorm`).
+      *Original note:*
       `TrackFX_SetParam` expects 0..1. Threshold −18 dB, Ratio 2:1, Attack 10 ms,
       Release 100 ms and Ceiling −1.0 dB all become garbage; the "limiter" ends up
       at +1 dB. Fix by using `TrackFX_SetParamNormalized` with a dB→normalized
@@ -28,15 +35,29 @@ again" is what produced the bugs.
       `TrackFX_GetParamEx` (min/max) rather than guessed.
       *Verify:* unit test that asserts the value written equals the value read back,
       plus a REAPER check that the ReaComp threshold display reads −18.0 dB.
-- [ ] **B. `rule-of-30-session-builder.lua` builds every session at ~4 BPM.**
+- [x] **B. `rule-of-30-session-builder.lua` builds every session at ~4 BPM.**
+      **DONE (2.0.0).** 9-argument call, plus a `Master_GetTempo()` read-back that
+      aborts the build if the tempo did not take. `tests/run_builder_tests.lua`
+      asserts the argument positions and that a project stuck at 4 BPM creates no
+      tracks.
+      *Original note:*
       `SetTempoTimeSigMarker` needs 9 args; the calls pass 8, shifting bpm into
       beatpos. Fix both calls, then assert the resulting tempo with
       `reaper.Master_GetTempo()` in a test instead of trusting the argument list.
-- [ ] **C. `phase-alignment-tool.lua` reads the audio buffer off by one frame.**
+- [x] **C. `phase-alignment-tool.lua` reads the audio buffer off by one frame.**
+      **DONE (2.0.0).** Rewritten around correlation rather than a first-threshold
+      crossing, every channel of a take, 1-based buffer indexing, and 18 tests that
+      check known offsets (1/7/64/119/-33 samples, stereo 2-channel -23, inverted
+      polarity) are reproduced exactly.
+      *Original note:*
       `new_array` is 1-based. Index with `(frame) * num_channels + 1`.
       Also: the analysis only looks at channel 1 of a stereo take — say so, or
       scan all channels.
-- [ ] **D/E. Duplicate FX on repeat runs.** `TrackFX_AddByName(..., -1)` inserts a
+- [x] **D/E. Duplicate FX on repeat runs.** **DONE (2.0.0).** `addFX` queries with
+      `instantiate = 0` first and only inserts when absent; the master chain comes
+      from `Presets.buses.master` through the same path. Tested by running each
+      chain twice and asserting the FX count is unchanged.
+      *Original note:* `TrackFX_AddByName(..., -1)` inserts a
       new instance every time. Either delete the previous instance first, or use
       `instantiate = 0`/"return existing" semantics, and make the master FX chain
       idempotent (it currently stacks ReaComp/ReaEQ on every build).
@@ -73,11 +94,12 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
 
 ### 3. Decide what "v1.0" means for the two risky scripts
 
-- [ ] `phase-alignment-tool` is the only near-killer feature here, and its core
-      (transient detection → sample offset) is now known to be off by a frame plus
-      a monotonic-only assumption. Either invest in making it correct
-      (per-channel scan, cross-correlation instead of first-threshold crossing) and
-      test it, or mark it experimental in the README and the ReaPack description.
+- [x] `phase-alignment-tool` — **invested (2.0.0), as requested.** Cross-correlation
+      over every channel, coarse envelope search then a fine search, measure-then-move,
+      per-track report with correlation and confidence, polarity detection, and
+      explicit refusals for the cases it cannot judge. 18 tests cover known offsets,
+      inversion, noise rejection, stereo takes, rate mismatch and settings storage.
+      Still worth one real-session check against a hand-measured offset.
 - [ ] `SGM_reaper_ultra_hd_smart_tools` is two half-features in one file: a theme
       writer whose `[theme]`/`[color theme]` keys have never been checked against
       REAPER's real `.ReaperTheme` schema, and a "smart tool" engine that cannot
@@ -98,16 +120,20 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
       its index.
 
 ### 5. Stop shipping dead weight
-- [ ] `SGM_Utils.lua` (1.0.1, ~500 lines, JSON parser, stem classifier, colour
-      helpers) is imported by **nothing**. `rule-of-30-plugin-presets.lua` (a Waves
-      /iZotope/NeuralDSP chain database) is indexed by the Rule-of-30 bundle but
-      `require`d by nothing either. Both are installed for every user and can never
-      run. Either wire them into the scripts that were supposed to use them, or mark
-      them `@noindex` and drop them from `@provides`. Right now they are a support
-      burden with zero benefit.
-- [ ] `rule-of-30-session-builder.lua` also adds stock FX to tracks it never names
-      in the log ("✓ Added chain: Kick In" is printed even when
-      `TrackFX_AddByName` returned −1). Report per-plugin success/failure.
+- [x] **WIRED.** `SGM_Utils.lua` (now 1.1.0) is loaded by the phase-alignment tool,
+      the session builder, `SGM_auto_master` and `SGM_route_mix_bus`, each with a
+      local fallback so every script still runs alone. It also gained `Utils.load()`
+      (one shared search order instead of four copies) and `Utils.fx_normalize()`.
+      `rule-of-30-plugin-presets.lua` (3.0.0) is loaded by the builder and
+      *is* the chain table the chain buttons apply — it is no longer a file that
+      nothing reads. Its old Waves/iZotope name list is gone; the presets are stock
+      FX with real settings.
+- [x] **DONE.** The builder reports per-track results: `+N FX`, or which plug-ins it
+      skipped because the track already had them, or which it could not find.
+      Values it could not map are named individually.
+- [ ] Still open from this section: confirm in real REAPER that the four chain
+      buttons produce the chains the tests describe (the mock cannot prove that a
+      plug-in's parameter list matches the parameter names used here).
 
 ### 6. Size the session honestly
 - [ ] The docs say "48-track session". Count the tracks the builder actually

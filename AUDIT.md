@@ -20,7 +20,7 @@ Version bumps: Essentials bundle **1.1.3**, Rule-of-30 bundle **1.0.3**.
 > been made once (`GetCPULoading` → `GetCPUUsage`). Everything in this report is now
 > checked against the authoritative function list, and the check is automated:
 > `tools/check_api.py` runs in CI and fails on any call that is not in the REAPER
-> 7.83 SDK header. The unit tests in `tests/` (21 cases) run every main code path
+> 7.83 SDK header. The unit tests in `tests/` (66 cases) run every main code path
 > against a mock API.
 
 ---
@@ -157,7 +157,7 @@ the repository instead of living in the audit:
 | API-name check | `tools/check_api.py` + `tools/api_allowlist.json` | Any `reaper.*` call not in the REAPER 7.83 SDK header (878 functions) or the SWS allowlist. This is the check that would have caught items 5 and 12–14 before release. |
 | Use-before-`local` check | same | `attempt to call a nil value (global 'x')` — the item-1 crash class. |
 | `PreventUIRefresh` balance | same (per function, following helper calls) | Frozen arrange view after an early return — the item-8 class. |
-| Runtime regression suite | `tests/run_tests.lua` + `tests/reaper_mock.lua` (21 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
+| Runtime regression suite | `tests/run_tests.lua`, `run_phase_tests.lua`, `run_builder_tests.lua` + `tests/reaper_mock.lua` (66 cases) | Crashes, nil-send writes, duplicate sends, wrong destination channels, non-idempotent runs. |
 | CI | `.github/workflows/ci.yml` | `lua5.4 -p`, the API check, the test suite, and the stricter `index.xml` validation. |
 
 Both `tools/check_api.py` and the test suite fail loudly on the pre-fix tree: run
@@ -214,9 +214,31 @@ actions.
 | G | `SGM_reaper_ultra_hd_smart_tools.lua` | `_calculate_tool_mode` mixes coordinate spaces: `I_TCPY`/`I_TCPH` are TCP-relative and unscrolled (negative when scrolled down), while `GetMousePosition` is screen-space. `relative_y` is therefore meaningless. | wrong result |
 | H | `daw-discovery-analyzer.lua` | `local PERFORMANCE_METER_ACTION = 40364` with the comment "View: Performance Meter". **40364 is "Options: Toggle metronome"** (SWS `Misc/Adam.cpp`: `Main_OnCommand(40364, 0); // Toggle built in metronome`). Running the analyzer toggles the click while telling the user it opened the meter. | wrong + side effect |
 
-Findings A–H are documented here and queued in `todo.md`. They are **not fixed in
-this commit**: each needs a REAPER-side test, and changing the FX/tempo/send
-behaviour without one is how the previous two passes produced new bugs.
+Findings A–H are documented here and queued in `todo.md`. A, B, C, D and E are
+now **fixed and covered by tests** (see §9); F, G and H are still open.
+
+## 9. Wiring pass — what running the code for real found
+
+The first four passes were all reading. This pass drove the scripts through
+`tests/reaper_mock.lua` and asserted on the resulting project state, which turned
+out to be the difference between "the arguments look plausible" and "the value is
+where it says it is". Every defect below was found by a test, not by reading.
+
+| # | Where | Problem | Status |
+|---|-------|---------|--------|
+| I | `tests/reaper_mock.lua` | `TrackFX_AddByName(..., 0)` **inserted** the plug-in instead of only querying it. The header is explicit: "Specify a negative value for instantiate to always create a new effect, **0 to only query** the first instance of an effect, or a positive value to add an instance if one is not found". A query that inserts makes every idempotency check look like it added a duplicate — and it hid a real bug for a whole test run. | fixed in the mock |
+| J | `tests/reaper_mock.lua` | A script's `loadfile()`d library inherits the real `_G` under Lua 5.4, so the sandbox `_ENV` that supplied `reaper` did not reach the library: every preset lookup died with `attempt to index a nil value (global 'reaper')`. REAPER has `reaper` as a genuine global; the mock now sets it for the duration of a run. | fixed in the mock |
+| K | `rule-of-30-session-builder.lua` (`scriptDirectory`) | Used `debug.getinfo(1,"S").source`, which is `"=[C]"` when a script is loaded by a wrapper, so the directory came back empty and neither `SGM_Utils.lua` nor the presets could be found — even though both sit next to the script. `get_action_context` is the documented way to find your own path; it is now tried first. | fixed (2.0.0) |
+| L | `rule-of-30-plugin-presets.lua` | Values were hand-guessed normalized numbers with the engineering value in a comment. ReaComp threshold `-18 dB` was annotated "normalized 0.55"; the real position is **0.5781**, so the comment and the setting disagreed. Values are now written in the plug-in's units and converted at apply time by `Utils.fx_normalize()`, which bisects on the plug-in's own formatting. | fixed (3.0.0) |
+| M | `rule-of-30-plugin-presets.lua` | ReaEQ was driven through raw parameter names (`"Band 2 Frequency"`), which ReaEQ does not expose as searchable parameters. EQ settings now go through `TrackFX_SetEQParam` with a band type. | fixed (3.0.0) |
+| N | `SGM_auto_master.lua` | `TrackFX_SetEQParam` takes **7** arguments and `isnorm` is the last; the call passed 6, so the `false` that says "this frequency is in Hz" was never passed. Also: on a machine where the compressor settings could not be mapped, the console still printed "✓ Compressor (Glue) added". It now reports how many of the four settings it applied. | fixed (1.1.0) |
+| O | `SGM_Utils.lua` | `Utils.native_color` takes a packed `0xRRGGBB` integer; `SGM_route_mix_bus` holds `{r, g, b}`. Wiring them together without an adapter raised a bitwise-arithmetic error on a table — a crash that only appears on the path where `SGM_Utils` *is* installed, i.e. the common case. | fixed (1.1.0) |
+| P | `SGM_Utils.lua` | `TrackFX_FormatParamValueNormalized` returns **(retval, buf)**. Destructuring three values silently yields `nil` for the text, so every conversion returned `nil` and every setting was skipped — with no error to notice. | fixed (1.1.0) |
+
+Lesson from I, J and P: the harness is code too, and a harness that is wrong in
+permissive direction hides the bug it exists to find. The test suites now assert
+on values read back **through the plug-in's own formatter**, which is the closest
+a mock can get to "the user sees -18.0 dB in the UI".
 
 ### Why the previous pass said the opposite
 
