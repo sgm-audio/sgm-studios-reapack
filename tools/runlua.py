@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Run one of the Lua test suites without REAPER or a system Lua interpreter.
 
-The suites are plain Lua and normally run as:
+The suites run in the embedded Lua 5.4 runtime, matching REAPER's Lua version,
+and normally run as:
 
     lua5.4 tests/run_tests.lua
 
-That needs a Lua binary installed. This script embeds Lua 5.5 through lupa
+That needs a Lua binary installed. This script embeds Lua 5.4 through lupa
 instead, so the suites can run anywhere Python is available:
 
     pip install lupa
@@ -27,7 +28,7 @@ unrunnable.
 import sys
 
 try:
-    import lupa
+    from lupa.lua54 import LuaRuntime
 except ImportError:  # pragma: no cover - the message is the point
     sys.stderr.write(
         "lupa is not installed. Either install a Lua interpreter and run the "
@@ -42,7 +43,7 @@ def main(argv):
         sys.stderr.write("usage: runlua.py <suite.lua>\n")
         return 2
 
-    runtime = lupa.LuaRuntime(unpack_returned_tuples=True)
+    runtime = LuaRuntime(unpack_returned_tuples=True)
     exit_code = 0
 
     def fake_exit(n=0):

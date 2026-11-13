@@ -150,6 +150,7 @@ function mock.new()
     return true, tr.name
   end
   function r.GetTrackName(tr) return true, tr.name end
+  function r.GetTrackDepth(tr) return tr.depth or 0 end
   function r.SetTrackColor(tr, color) tr.color = color end
   function r.ColorToNative(rr, gg, bb) return rr * 65536 + gg * 256 + bb end
   function r.CountSelectedTracks() return #r._selected end

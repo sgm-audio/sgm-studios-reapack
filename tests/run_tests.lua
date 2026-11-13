@@ -181,14 +181,37 @@ test("does not duplicate an existing send", function()
   eq(#a.sends, 1, "still one send")
 end)
 
-test("skips folder parents and leaves the UI refresh balanced", function()
+test("selected folder parent is a valid routing target", function()
   local r = mock.new()
   local folder = mock.add_track(r, "Folder")
-  folder.folderdepth = 1
+  folder.folderdepth = 2 -- opens two nested folder levels
   mock.select(r, { folder })
   eq(mock.run_script(r, ESS .. "SGM_route_mix_bus.lua"), nil, "script error")
-  eq(#folder.sends, 0, "folder parent not routed")
+  eq(#folder.sends, 1, "selected folder parent routed")
+  eq(folder.mainsend, 0, "folder parent routed through Mix Bus")
   eq(r._ui_refresh, 0, "UI refresh balanced")
+end)
+
+test("no-selection fallback routes top-level folder groups, not their children", function()
+  local r = mock.new()
+  local outer = mock.add_track(r, "Outer Folder")
+  outer.depth, outer.folderdepth = 0, 1
+  local child = mock.add_track(r, "Child")
+  child.depth, child.folderdepth = 1, 1
+  local nested = mock.add_track(r, "Nested Folder")
+  nested.depth, nested.folderdepth = 2, 1
+  local nested_child = mock.add_track(r, "Nested Child")
+  nested_child.depth, nested_child.folderdepth = 3, -3
+  local standalone = mock.add_track(r, "Standalone")
+  standalone.depth = 0
+
+  eq(mock.run_script(r, ESS .. "SGM_route_mix_bus.lua"), nil, "script error")
+  eq(#outer.sends, 1, "outer folder routed")
+  eq(#child.sends, 0, "child not sent around its folder")
+  eq(#nested.sends, 0, "nested folder remains under its top-level parent")
+  eq(#nested_child.sends, 0, "nested child not sent around its folder")
+  eq(#standalone.sends, 1, "standalone top-level track routed")
+  eq(child.mainsend, 1, "child retains its parent send")
 end)
 
 test("empty project reports 'No tracks to route'", function()

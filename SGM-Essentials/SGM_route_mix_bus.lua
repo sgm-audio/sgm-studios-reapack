@@ -1,8 +1,12 @@
 -- @description Route all tracks through a Mix Bus, then Mix Bus to Master
 -- @author Scott Mills
--- @version 1.1.0
+-- @version 1.1.1
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @changelog
+--   1.1.1 (2026-11-12)
+--     + Fix: the no-selection fallback routes top-level tracks, preserving folder
+--       processing. Routing folder children directly to the bus bypassed their
+--       folder parents' FX, and selected folder parents are now valid targets.
 --   1.1.0 (2026-11-07)
 --     + Add: uses the shared SGM_Utils library when it is installed (message
 --       output, native track colours) and falls back to local helpers when it
@@ -31,7 +35,8 @@
 --   - DRY_RUN mode: set DRY_RUN = true to preview changes without applying
 --   - Selection aware: with tracks selected, only those are routed; with
 --     nothing selected, every top-level track is routed
---   - Folder aware: folder parents are left alone (children already feed them)
+--   - Folder aware: when nothing is selected, top-level tracks (including folder
+--     parents) are routed so their nested tracks still pass through folder FX
 --   - Duplicate-send prevention: skips tracks already routed to Mix Bus
 --   - Color-coded Mix Bus track (configurable RGB color)
 --
@@ -151,31 +156,30 @@ local function isSendToTarget(track, dest)
     return false
 end
 
--- Builds the list of tracks to route.
--- Mix bus itself is always excluded; folder parents are excluded because
--- their children already feed them through the parent send.
+-- Builds the list of tracks to route. Explicit selection means route exactly
+-- those tracks (including a selected folder parent). With no selection, route
+-- top-level tracks only: routing folder children directly would bypass the
+-- folder parent's FX and defeat the folder's normal signal path.
 local function collectTargets(mixBus, mixBusIdx)
     local targets = {}
     local selected = reaper.CountSelectedTracks(0)
 
-    local function consider(tr, idx)
-        if tr == mixBus or idx == mixBusIdx then return end
-        -- Folder parent? Children route into it, so routing it again is redundant.
-        if reaper.GetMediaTrackInfo_Value(tr, "I_FOLDERDEPTH") == 1 then
-            dbg("Skipping folder parent: '" .. trackName(tr) .. "'")
-            return
+    local function add(tr, idx)
+        if tr and tr ~= mixBus and idx ~= mixBusIdx then
+            targets[#targets + 1] = tr
         end
-        targets[#targets + 1] = tr
     end
 
     if selected > 0 then
         for i = 0, selected - 1 do
-            local tr = reaper.GetSelectedTrack(0, i)
-            if tr then consider(tr, -1) end
+            add(reaper.GetSelectedTrack(0, i), -1)
         end
     else
         for i = 0, reaper.CountTracks(0) - 1 do
-            consider(reaper.GetTrack(0, i), i)
+            local tr = reaper.GetTrack(0, i)
+            if tr and reaper.GetTrackDepth(tr) == 0 then
+                add(tr, i)
+            end
         end
     end
 

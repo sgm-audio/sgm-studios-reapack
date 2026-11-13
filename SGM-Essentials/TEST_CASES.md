@@ -1,10 +1,11 @@
 # SGM Essentials — Test Cases
 
-> **VERIFICATION STATUS: UNVERIFIED (2026-11-07)**
-> These test cases require a REAPER 7.0+ runtime. SWS is only needed for the
-> DAW analyzer routing detail and for the smart-tool engine.
-> No functional verification has been performed in this environment.
-> Lua syntax and index.xml structure have been validated via automated checks.
+> **REAPER GUI VERIFICATION: PENDING**
+> These acceptance cases require a real REAPER 7.0+ runtime. SWS is only needed
+> for the DAW analyzer routing detail and the smart-tool engine. Automated Lua
+> mock-API tests and static checks cover code paths, but cannot verify actual
+> audio routing, GUI state, or plug-in behavior; record the real-REAPER results
+> below when performed.
 
 **Tester**: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
 **Date**: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
@@ -44,7 +45,7 @@
 - **Steps**:
   1. Deselect everything
   2. Run SGM_route_mix_bus
-- **Expected Result**: Every top-level track is routed (documented fallback), folder parents are skipped, and the console reports the count. No Lua error.
+- **Expected Result**: Top-level tracks are routed, including folder parents; nested child tracks keep their parent routing and are not sent directly to the Mix Bus. This preserves folder processing and the console reports the count. No Lua error.
 - **Pass**: [ ] / [ ]
 
 ### TC-RM-05: Run in an empty project
@@ -52,6 +53,16 @@
 - **Steps**:
   1. Run SGM_route_mix_bus
 - **Expected Result**: Console: "No tracks to route." No Mix Bus created, no error.
+- **Pass**: [ ] / [ ]
+
+### TC-RM-06: Explicitly route a folder parent
+- **Prerequisites**: A folder track with child tracks and no Mix Bus.
+- **Steps**:
+  1. Select only the folder parent
+  2. Run SGM_route_mix_bus
+- **Expected Result**: The folder parent gets a send to the Mix Bus and its
+  master/parent send is disabled. Child tracks remain routed into the folder,
+  so folder FX stay in the signal path. One undo point covers the operation.
 - **Pass**: [ ] / [ ]
 
 ---

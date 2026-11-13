@@ -1,7 +1,11 @@
 # SGM Essentials — Changelog
 
-Version numbers here follow the bundle metapackage
-(`SGM_CoreUtilities_Bundle.lua`); individual script versions are 1.0.x.
+## 1.5.0 (2026-11-12)
+
+- **SGM_route_mix_bus 1.1.1**: the no-selection fallback routes top-level tracks,
+  including folder parents, instead of sending folder children around their parents
+  (which bypassed folder processing). Explicitly selected folder parents can now be
+  routed as intended. Added mock regression coverage for nested folder layouts.
 
 ## 1.1.2 (2026-11-07)
 

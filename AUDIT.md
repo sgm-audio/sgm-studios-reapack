@@ -526,3 +526,42 @@ Each fix was checked by reinstating the old code and confirming the suite fails:
 |---|---|
 | Five-value destructuring in `_mode_under_mouse` | 4 tests fail |
 | `cmd = 40364` hard-coded in `showPerformanceMeter` | 2 tests fail |
+
+---
+
+## 2026-11-12 follow-up audit and QA
+
+A second pass was run against the checked-out official `justinfrankel/reaper-sdk`
+repository (upstream commit `b2ca1ec92c9a7864fb72346037986a384971ed03`, REAPER
+7.83). The header SHA-1 recorded in `tools/api_allowlist.json` was stale; it is
+now updated to the exact upstream header digest. The 878 API names in the
+allowlist were compared as a set against all 878 names in
+`sdk/reaper_plugin_functions.h`: exact match, no missing or extra functions.
+`python3 tools/check_api.py` also passes across all Lua files, with no unknown
+`reaper.*` calls, local-use-before-declaration findings, or unbalanced
+`PreventUIRefresh` calls.
+
+The behavior of the mix-bus no-selection fallback was also compared with the
+ReaTeam scripts `Various/Lokasenna_Create mix bus and reroute all top-level
+tracks to it.lua` and `Various/Lokasenna_Create mix bus and reroute all selected
+tracks to it.lua`. The project's fallback had been sending folder children
+straight to the Mix Bus while skipping their folder parents. That bypassed the
+folder parent's processing and did not match the top-level-track strategy used
+by the ReaTeam script. The fallback now routes tracks for which
+`GetTrackDepth(track) == 0`, including folder parents; explicit selection routes
+exactly the selected tracks, including a selected folder parent. Tests cover
+nested folders, standalone top-level tracks, and explicit folder-parent
+selection. ReaTeam's examples are reference implementations, not an API
+contract; the API call itself is verified against the official SDK.
+
+The mock runner now explicitly uses embedded Lua 5.4, matching REAPER's Lua
+runtime, rather than Lupa's default Lua version. Verification completed:
+
+- Lua 5.4 syntax parse: all 16 tracked Lua files.
+- Mock API regression suites: 24 + 18 + 26 + 36 = **104 passed, 0 failed**.
+- `tools/check_api.py`: clean; official 7.83 API set exact match (878/878).
+- `tools/gen_index.py --check`, XML source resolution, and metadata validation:
+  passed after regenerating `index.xml` with the new bundle/script versions and
+  a commit-pinned source reference.
+- REAPER GUI/audio-device/plug-in integration: **not run** in this sandbox. The
+  manual acceptance cases in `SGM-Essentials/TEST_CASES.md` remain necessary.

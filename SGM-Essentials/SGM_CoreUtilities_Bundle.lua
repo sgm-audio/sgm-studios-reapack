@@ -1,9 +1,13 @@
 -- @description SGM Studios Essentials: mix bus routing, auto-mastering, smart tools, DAW analyzer, and utilities
 -- @author Scott Mills
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
--- @version 1.4.0
+-- @version 1.5.0
 -- @metapackage
 -- @changelog
+--   1.5.0 (2026-11-12)
+--     + SGM_route_mix_bus 1.1.1: no-selection routing now targets top-level
+--       tracks (including folder parents), keeping nested tracks in their
+--       folder signal path; explicitly selected folder parents are routable.
 --   1.4.0 (2026-11-07)
 --     + SGM_reaper_ultra_hd_smart_tools 2.1.0: the last of the fictitious
 --       "Alt key" behaviour is gone (STRETCH and SPLIT modes removed), and the
