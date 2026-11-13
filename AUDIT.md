@@ -561,7 +561,7 @@ runtime, rather than Lupa's default Lua version. Verification completed:
 - Mock API regression suites: 24 + 18 + 26 + 36 = **104 passed, 0 failed**.
 - `tools/check_api.py`: clean; official 7.83 API set exact match (878/878).
 - `tools/gen_index.py --check`, XML source resolution, and metadata validation:
-  pending final index regeneration after packaging the new bundle/script
-  versions.
+  passed after regenerating `index.xml` with the new bundle/script versions and
+  a commit-pinned source reference.
 - REAPER GUI/audio-device/plug-in integration: **not run** in this sandbox. The
   manual acceptance cases in `SGM-Essentials/TEST_CASES.md` remain necessary.

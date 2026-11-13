@@ -16,8 +16,10 @@ def find_lua():
 def main():
     lua = find_lua()
     if not lua:
-        print("no Lua interpreter found (install lua5.4)")
-        return 1
+        print("no system Lua interpreter found; trying embedded Lua 5.4 via lupa")
+        return subprocess.call([
+            sys.executable, "tools/runlua.py", "tests/run_tests.lua"
+        ])
     print(f"using {lua}")
     return subprocess.call([lua, "tests/run_tests.lua"])
 
