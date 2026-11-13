@@ -10,7 +10,7 @@ Six runnable scripts plus a shared library and a ReaPack metapackage. All free, 
 
 | Script | Type | What It Does |
 |--------|------|-------------|
-| **SGM_route_mix_bus.lua** | [main] | Routes tracks through a dedicated Mix Bus track. With tracks selected, only those are routed; with nothing selected, every top-level track is. Folder parents are skipped (their children already feed them), tracks already sent to the bus are not duplicated, and `DRY_RUN` previews the changes. |
+| **SGM_route_mix_bus.lua** | [main] | Routes tracks through a dedicated Mix Bus track. With tracks selected, only those are routed; with nothing selected, top-level tracks (including folder parents) are routed so nested tracks retain folder processing. Existing sends are not duplicated, and `DRY_RUN` previews the changes. |
 | **SGM_auto_master.lua** | [main] | One-click mastering chain on the master bus: ReaEQ high-pass → ReaComp → ReaLimit. Configurable at the top of the script, with a confirmation dialog before existing master FX are replaced. |
 | **SGM_FieldyBagToggle.lua** | [main] | Toggles between two bass FX chains: Fieldy (slots 1–3) and Dimebag (slots 4–6). Enables one set and bypasses the other; only touches slots that actually exist. |
 | **SGM_reaper_ultra_hd_smart_tools.lua** | [main] | Writes a `.ReaperTheme` by inheriting your loaded theme and replacing ~33 colour keys with a dark palette, then prints the measured WCAG contrast ratios. Not a "4K" or resolution-specific theme: REAPER draws at the OS scale and the artwork lives in a `.ReaperThemeZip` that no script can author. Optionally starts an experimental smart-tool *mode reporter* (it cannot change the cursor). |

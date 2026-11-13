@@ -245,7 +245,7 @@
         <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 Courier;}}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 SGM Route Mix Bus\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Creates (or finds) a dedicated Mix Bus track, disables the master/parent send on the routed tracks and routes them all through the Mix Bus. The Mix Bus itself feeds the Master - useful for bus compression, overall mix glue or stem-style mixing.\par}
-{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Features: DRY_RUN mode previews the changes without applying them. With tracks selected only those are routed; with nothing selected every top-level track is routed. Folder parents are left alone because their children already feed them. Tracks that already have a send to the Mix Bus are skipped.\par}
+{\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Features: DRY_RUN mode previews the changes without applying them. With tracks selected only those are routed; with nothing selected top-level tracks (including folder parents) are routed so nested tracks retain folder processing. Tracks that already have a send to the Mix Bus are skipped.\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 How to use: 1. Select the tracks to route (or select nothing for "all"). 2. Run the script. 3. Check the console for a routing summary.\par}
 {\pard \ql \f0 \fs24 \sa180 \li0 \fi0 Configuration (edit at top of script): MIX_BUS_NAME = "Mix Bus", MIX_BUS_COLOR = \{ r = 255, g = 180, b = 50 \}, DRY_RUN = false, DEBUG = false.\par}
 }
