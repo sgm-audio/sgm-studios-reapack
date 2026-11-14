@@ -214,6 +214,18 @@ test("no-selection fallback routes top-level folder groups, not their children",
   eq(child.mainsend, 1, "child retains its parent send")
 end)
 
+test("adopting existing mix bus logs index and tips undo", function()
+  local r = mock.new()
+  local existing_bus = mock.add_track(r, "Mix Bus")
+  local track_a = mock.add_track(r, "Guitar")
+  mock.select(r, { track_a })
+  eq(mock.run_script(r, ESS .. "SGM_route_mix_bus.lua"), nil, "script error")
+  local out = mock.console(r)
+  contains(out, "Found existing 'Mix Bus' track (track 1).", "bus index logged")
+  contains(out, "Tip: Press Ctrl+Z", "undo tip logged")
+  eq(#track_a.sends, 1, "track routed")
+end)
+
 test("empty project reports 'No tracks to route'", function()
   local r = mock.new()
   eq(mock.run_script(r, ESS .. "SGM_route_mix_bus.lua"), nil, "script error")

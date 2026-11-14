@@ -1,8 +1,11 @@
 -- @description Route all tracks through a Mix Bus, then Mix Bus to Master
 -- @author Scott Mills
--- @version 1.1.1
+-- @version 1.1.2
 -- @license MIT (c) 2026 Scott Mills / SGM Studios — see LICENSE; kept with the script when redistributed
 -- @changelog
+--   1.1.2 (2026-11-14)
+--     + UX: log adopted track index when an existing Mix Bus track is found.
+--     + UX: show undo guidance (Ctrl+Z / Cmd+Z) in completion summary.
 --   1.1.1 (2026-11-12)
 --     + Fix: the no-selection fallback routes top-level tracks, preserving folder
 --       processing. Routing folder children directly to the bus bypassed their
@@ -196,7 +199,7 @@ local function run()
     local created = false
 
     if mixBus then
-        msg("Found existing '" .. MIX_BUS_NAME .. "' track.")
+        msg(string.format("Found existing '%s' track (track %d).", MIX_BUS_NAME, mixBusIdx + 1))
     elseif DRY_RUN then
         msg("[DRY RUN] Would create '" .. MIX_BUS_NAME .. "' track.")
         -- Nothing else can be previewed meaningfully without the bus.
@@ -273,6 +276,9 @@ local function run()
     elseif routed > 0 then
         msg("Routed " .. routed .. " track(s) through " .. MIX_BUS_NAME
             .. (skipped > 0 and " (" .. skipped .. " already routed)." or "."))
+        if not DRY_RUN then
+            msg("Tip: Press Ctrl+Z (or Cmd+Z on macOS) to undo all routing changes in one step.")
+        end
     else
         msg("No tracks to route.")
     end

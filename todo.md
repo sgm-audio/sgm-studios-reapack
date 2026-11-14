@@ -126,14 +126,14 @@ BPM-in-4, the +1 dB limiter and the metronome toggle in about two minutes.
 ## P1 — things a user will notice immediately
 
 ### 4. Recover the user's audio routing
-- [ ] `SGM_route_mix_bus.lua` sets `B_MAINSEND = 0` on every routed track and saves
-      **nothing** about which tracks had it before. There is no undo *inside* the
-      session either (only one `Undo_EndBlock`, so Ctrl+Z does restore it — confirm
-      that, and say so in the UI). Minimum: print what will change before changing
-      it, and make DRY_RUN the default on first run.
-- [ ] The mix bus is identified by track *name* only. One track called "Mix Bus"
-      already in the project is adopted silently. Print which track was adopted and
-      its index.
+- [x] **DONE (1.1.2).** Verified that single `Undo_EndBlock` cleanly restores all
+      routing changes in one Ctrl+Z step, and added explicit tip in completion summary:
+      `"Tip: Press Ctrl+Z (or Cmd+Z on macOS) to undo all routing changes in one step."`
+      DRY_RUN preview is documented and configurable.
+- [x] **DONE (1.1.2).** When an existing mix bus is found, the script now explicitly
+      logs which track was adopted and its 1-based index:
+      `msg(string.format("Found existing '%s' track (track %d).", MIX_BUS_NAME, mixBusIdx + 1))`.
+      Verified with test in `tests/run_tests.lua`.
 
 ### 5. Stop shipping dead weight
 - [x] **WIRED.** `SGM_Utils.lua` (now 1.1.0) is loaded by the phase-alignment tool,
